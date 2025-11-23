@@ -68,7 +68,6 @@ function renderCanais(tabId, canaisString) {
     });
 }
 
-/* ---------- criação de aba a partir do estado ---------- */
 function createTabFromState(tabId, data) {
     const tab = document.createElement("div");
     tab.className = "tab";
@@ -153,19 +152,37 @@ function createTabFromState(tabId, data) {
 
         <div class="field">
             <label>Canais (somente > 0)</label>
-            <div id="canais_${tabId}" class="channels-wrapper"></div>
+            <div id="canais_${tabId}" class="channels-wrapper">
+                <!-- inputs dos canais ativos serão criados via JS -->
+            </div>
         </div>
         
         <div class="field">
             <label>Tempo Estimado</label>
             <input id="tempo_${tabId}" class="readonly" type="text" readonly value="${data.tempo || ""}">
         </div>
+
+        <h2>Divisão 3 — Dados</h2>
+
+        <div class="field">
+            <label>Base</label>
+            <input id="base_${tabId}" class="readonly" type="text" readonly value="${data.base || ""}">
+        </div>
+
+        <div class="field">
+            <label>Observação</label>
+            <textarea id="obs_${tabId}" class="readonly readonly-multiline" readonly>${data.observacao || ""}</textarea>
+        </div>
     `;
 
     document.getElementById("content-container").appendChild(content);
 
-    // *** recria canais a partir do estado salvo ***
-    renderCanais(tabId, data.canais || "");
+    // repopula os canais após reload
+    if (data.canais) {
+        renderCanais(tabId, data.canais);
+    }
+
+    tabCount++;
 }
 
 /* ---------- criação de nova aba ---------- */
@@ -183,7 +200,9 @@ function createTab() {
         marca: "",
         descCamp: "",
         canais: "",
-        tempo: ""
+        tempo: "",
+        base: "",
+        observacao: ""
     };
 
     createTabFromState(tabId, tabsState.tabs[tabId]);
@@ -288,33 +307,90 @@ function processCard(tabId, texto) {
         }
     }
 
+    // ====== DIVISÃO 3: DADOS ======
+    let base = "";
+    let observacao = "";
+
+    const idxDados = linhas.findIndex(l =>
+        l.toUpperCase().includes("DADOS")
+    );
+
+    if (idxDados !== -1) {
+        let startD = idxDados + 1;
+
+        while (startD < linhas.length && linhas[startD].trim() === "") {
+            startD++;
+        }
+
+        let endD = startD;
+
+        while (
+            endD < linhas.length &&
+            !/^-{3,}/.test(linhas[endD].trim())
+        ) {
+            endD++;
+        }
+
+        const subsetD = linhas.slice(startD, endD);
+        let viuFonte = false;
+
+        for (let i = 0; i < subsetD.length; i++) {
+            const linha = subsetD[i].trim();
+            if (!linha) continue;
+
+            const upper = linha.toUpperCase();
+
+            if (upper.startsWith("FONTE DE DADOS:")) {
+                viuFonte = true;
+                continue;
+            }
+
+            // primeira linha depois de "FONTE DE DADOS:" que não é EXCLUIR/OBSERVACAO vira a Base
+            if (!base && viuFonte && !upper.startsWith("EXCLUIR") && !upper.startsWith("OBSERVACAO:")) {
+                base = linha;
+                continue;
+            }
+
+            if (upper.startsWith("OBSERVACAO:")) {
+                observacao = linha.split(":").slice(1).join(":").trim();
+            }
+        }
+    }
+
+    // Preenche campos das divisões 2 e 3
     const areaEl        = document.getElementById("area_" + tabId);
     const solicEl       = document.getElementById("solicitante_" + tabId);
     const marcaEl       = document.getElementById("marca_" + tabId);
     const descCampEl    = document.getElementById("descCamp_" + tabId);
     const tempoEl       = document.getElementById("tempo_" + tabId);
+    const baseEl        = document.getElementById("base_" + tabId);
+    const obsEl         = document.getElementById("obs_" + tabId);
 
-    if (areaEl)      areaEl.value = area;
-    if (solicEl)     solicEl.value = solicitante;
-    if (marcaEl)     marcaEl.value = marca;
-    if (descCampEl)  descCampEl.value = descCamp;
-    if (tempoEl)     tempoEl.value = tempo;
+    if (areaEl)     areaEl.value = area;
+    if (solicEl)    solicEl.value = solicitante;
+    if (marcaEl)    marcaEl.value = marca;
+    if (descCampEl) descCampEl.value = descCamp;
+    if (tempoEl)    tempoEl.value = tempo;
+    if (baseEl)     baseEl.value = base;
+    if (obsEl)      obsEl.value  = observacao;
 
     // monta canais a partir da string
     renderCanais(tabId, canais);
 
     // ====== Atualiza estado ======
     const tabData = tabsState.tabs[tabId];
-    tabData.title       = nome || "Card";
-    tabData.input       = texto;
-    tabData.nome        = nome;
-    tabData.descricao   = desc;
-    tabData.area        = area;
-    tabData.solicitante = solicitante;
-    tabData.marca       = marca;
-    tabData.descCamp    = descCamp;
-    tabData.canais      = canais;
-    tabData.tempo       = tempo;
+    tabData.title      = nome || "Card";
+    tabData.input      = texto;
+    tabData.nome       = nome;
+    tabData.descricao  = desc;
+    tabData.area       = area;
+    tabData.solicitante= solicitante;
+    tabData.marca      = marca;
+    tabData.descCamp   = descCamp;
+    tabData.canais     = canais;
+    tabData.tempo      = tempo;
+    tabData.base       = base;
+    tabData.observacao = observacao;
 
     saveState();
 }
