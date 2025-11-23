@@ -22,6 +22,10 @@ body {
 }
 
 /* === CAMPOS === */
+.field {
+    margin-bottom: 14px;
+}
+
 .field label {
     display: block;
     margin-bottom: 6px;
@@ -42,6 +46,12 @@ body {
 .readonly {
     background: #151515;
     border-color: #444;
+}
+
+.readonly-multiline {
+    min-height: 120px;
+    resize: vertical;
+    white-space: pre-wrap;
 }
 
 /* === ABAS === */
@@ -110,24 +120,7 @@ body {
     padding: 6px 14px;
 }
 
-.readonly-multiline {
-    min-height: 120px;
-    resize: vertical;  /* se quiser poder aumentar a área */
-    white-space: pre-wrap; /* mantém quebras de linha bonitinhas */
-}
-
-.channels-wrapper {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 8px;
-}
-
-/* reaproveita visual de readonly, mas em “pílulas” menores */
-.channel-input {
-    max-width: 220px;
-    cursor: default;
-}
-
+/* Canais (>0) */
 .channels-wrapper {
     display: flex;
     flex-wrap: wrap;
@@ -138,4 +131,9 @@ body {
     display: flex;
     flex-direction: column;
     min-width: 140px;
+}
+
+.channel-input {
+    max-width: 220px;
+    cursor: default;
 }
