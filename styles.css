@@ -75,11 +75,77 @@ body {
     border-color: #444;
 }
 
-/* Textareas longos (observações, JSON, card completo) */
+/* Textareas longos (observações, JSON, etc) */
 .readonly-multiline {
     min-height: 40px;
     resize: vertical;
     white-space: pre-wrap;
+}
+
+/* Entrada do card: 1 linha só */
+.card-input {
+    width: 100%;
+    padding: 4px 8px;
+    border-radius: 6px;
+    font-size: 13px;
+    border: 1px solid #333;
+    background: #111;
+    color: #f0f0f0;
+    box-sizing: border-box;
+    height: 26px;
+    min-height: 26px;
+    max-height: 60px;
+    resize: vertical;
+}
+
+/* === BLOCO DE INFORMAÇÕES COMPACTAS (título do card) === */
+
+.info-group {
+    margin-top: 8px;
+    font-size: 13px;
+    color: #d0d0d0;
+}
+
+.info-row {
+    margin-bottom: 12px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 1px;
+}
+
+.info-label {
+    font-weight: 600;
+    color: #aaaaaa;
+    margin-right: 4px;
+}
+
+.info-value {
+    color: #e0e0e0;
+}
+
+/* === METADADOS COMPACTOS (push / banner / mkt) === */
+
+.meta-row {
+    margin-top: 6px;
+    font-size: 12px;
+    color: #cccccc;
+    line-height: 1.4;
+    white-space: pre-wrap;
+}
+
+/* === BLOCO DE CÓDIGO (JSON etc.) === */
+
+.code-block {
+    background: #050505;
+    border: 1px solid #333;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-family: Consolas, "Courier New", monospace;
+    font-size: 12px;
+    max-height: 220px;
+    overflow: auto;
+    white-space: pre;
+    box-sizing: border-box;
 }
 
 /* === ABAS === */
@@ -148,22 +214,29 @@ body {
     padding: 6px 14px;
 }
 
-/* Canais (>0) */
+/* Canais */
 .channels-wrapper {
     display: flex;
     flex-wrap: wrap;
-    gap: 12px;
+    gap: 8px;
+    margin-top: 2px;
 }
 
 .channel-field {
     display: flex;
     flex-direction: column;
-    min-width: 140px;
+    min-width: 120px;
+    font-size: 12px;
 }
 
-.channel-input {
-    max-width: 220px;
-    cursor: default;
+.channel-value {
+    display: inline-block;
+    margin-top: 2px;
+    padding: 2px 6px;
+    border-radius: 4px;
+    background: #151515;
+    border: 1px solid #333;
+    color: #f0f0f0;
 }
 
 /* === CARDS INTERNOS (conteúdo dentro de accordions) === */

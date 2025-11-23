@@ -32,6 +32,14 @@ function setFieldValue(prefix, tabId, value) {
     }
 }
 
+// helper pra setar texto em spans/divs
+function setTextValue(id, value) {
+    const el = document.getElementById(id);
+    if (el) {
+        el.textContent = value || "";
+    }
+}
+
 // auto-resize de textareas para não ficar gigante
 function autoResizeTextareas(tabId) {
     const content = document.getElementById("content_" + tabId);
@@ -46,12 +54,13 @@ function autoResizeTextareas(tabId) {
 // ===================== CANAIS (>0) =====================
 
 function renderCanais(tabId, canaisString) {
-    const canaisContainer = document.getElementById("canais_" + tabId);
-    if (!canaisContainer) return;
+    const span = document.getElementById("canaisText_" + tabId);
+    if (!span) return;
 
-    canaisContainer.innerHTML = "";
-
-    if (!canaisString) return;
+    if (!canaisString) {
+        span.textContent = "";
+        return;
+    }
 
     const canaisAtivos = [];
 
@@ -66,28 +75,13 @@ function renderCanais(tabId, canaisString) {
         const num = parseInt(valorRaw.trim(), 10);
 
         if (!isNaN(num) && num > 0) {
-            canaisAtivos.push({ nome: nomeCanal, valor: num });
+            canaisAtivos.push(`${nomeCanal} (${num})`);
         }
     });
 
-    canaisAtivos.forEach(ch => {
-        const wrapper = document.createElement("div");
-        wrapper.className = "channel-field";
-
-        const label = document.createElement("label");
-        label.textContent = ch.nome;
-
-        const input = document.createElement("input");
-        input.type = "text";
-        input.readOnly = true;
-        input.className = "readonly channel-input";
-        input.value = ch.valor;
-
-        wrapper.appendChild(label);
-        wrapper.appendChild(input);
-        canaisContainer.appendChild(wrapper);
-    });
+    span.textContent = canaisAtivos.join("   ");
 }
+
 
 // ===================== PARSERS BÁSICOS =====================
 
@@ -452,7 +446,17 @@ function parseMktScreenBlock(subset) {
     let posicaoJornada = "";
     let url = "";
     let blocosQtd = "";
+    let nomeExpMacro = "";
     const blocos = [];
+
+    // Nome Experiência macro (pega o primeiro que aparecer)
+    for (const l of subset) {
+        const linha = l.trim();
+        if (linha.startsWith("Nome Experiência:")) {
+            nomeExpMacro = linha.split(":").slice(1).join(":").trim();
+            break;
+        }
+    }
 
     const linhaPos = subset.find(l => l.trim().startsWith("posicaoJornada:"));
     if (linhaPos) {
@@ -495,7 +499,7 @@ function parseMktScreenBlock(subset) {
         }
     }
 
-    return { posicaoJornada, url, blocosQtd, blocos };
+    return { posicaoJornada, url, blocosQtd, nomeExpMacro, blocos };
 }
 
 // Juntando tudo
@@ -560,19 +564,13 @@ function renderPushList(tabId, pushes) {
         const titleSpan = document.createElement("span");
         titleSpan.className = "accordion-title";
         const num = p.numero || (index + 1);
-        const pos = p.posicaoJornada || p.posicaoHeader || "";
-        titleSpan.textContent = `Push ${num} — ${pos}`;
-
-        const metaSpan = document.createElement("span");
-        metaSpan.className = "accordion-meta";
-        metaSpan.textContent = p.nomeCom || "";
+        titleSpan.textContent = `Push ${num}`;
 
         const arrow = document.createElement("span");
         arrow.className = "accordion-arrow";
         arrow.textContent = "▸";
 
         header.appendChild(titleSpan);
-        header.appendChild(metaSpan);
         header.appendChild(arrow);
 
         const body = document.createElement("div");
@@ -585,7 +583,7 @@ function renderPushList(tabId, pushes) {
         const grid = document.createElement("div");
         grid.className = "fields-grid";
 
-        function addField(labelText, value, full = false, isTextarea = false) {
+        function addInputField(labelText, value, full = false) {
             const field = document.createElement("div");
             field.className = "field";
             if (full) field.classList.add("field-full");
@@ -593,15 +591,9 @@ function renderPushList(tabId, pushes) {
             const label = document.createElement("label");
             label.textContent = labelText;
 
-            let input;
-            if (isTextarea) {
-                input = document.createElement("textarea");
-                input.className = "readonly readonly-multiline";
-            } else {
-                input = document.createElement("input");
-                input.type = "text";
-                input.className = "readonly";
-            }
+            const input = document.createElement("input");
+            input.type = "text";
+            input.className = "readonly";
             input.readOnly = true;
             input.value = value || "";
 
@@ -610,15 +602,33 @@ function renderPushList(tabId, pushes) {
             grid.appendChild(field);
         }
 
-        addField("posicaoJornada", p.posicaoJornada, false);
-        addField("dataInicio", p.dataInicio, false);
-        addField("CTA Type", p.ctaType, false);
-        addField("Tem Variável?", p.temVar, false);
-        addField("Tipo Variável", p.tipoVar, false);
-        addField("Título", p.titulo, true);
-        addField("Subtítulo", p.subtitulo, true);
-        addField("URL de Redirecionamento", p.url, true);
-        addField("Observação", p.observacao, true, true);
+        // Metadados compactos no topo do bloco
+        const metaParts = [];
+        if (p.posicaoJornada) metaParts.push(`posicaoJornada: ${p.posicaoJornada}`);
+        if (p.dataInicio) metaParts.push(`dataInicio: ${p.dataInicio}`);
+        if (p.ctaType) metaParts.push(`CTA: ${p.ctaType}`);
+        if (p.temVar) metaParts.push(`Tem Var: ${p.temVar}`);
+        if (p.tipoVar) metaParts.push(`Tipo Var: ${p.tipoVar}`);
+
+        if (metaParts.length > 0) {
+            const meta = document.createElement("div");
+            meta.className = "meta-row";
+            meta.textContent = metaParts.join(" • ");
+            block.appendChild(meta);
+        }
+
+        if (p.observacao) {
+            const obs = document.createElement("div");
+            obs.className = "meta-row";
+            obs.textContent = `Obs: ${p.observacao}`;
+            block.appendChild(obs);
+        }
+
+        // Apenas os campos copiáveis
+        addInputField("Nome Comunicação", p.nomeCom, true);
+        addInputField("Título", p.titulo, true);
+        addInputField("Subtítulo", p.subtitulo, true);
+        addInputField("URL de Redirecionamento", p.url, true);
 
         block.appendChild(grid);
         body.appendChild(block);
@@ -654,18 +664,13 @@ function renderBannerList(tabId, banners) {
         const titleSpan = document.createElement("span");
         titleSpan.className = "accordion-title";
         const num = b.numero || (index + 1);
-        titleSpan.textContent = `Banner ${num} — Tela ${b.tela || "N/A"}`;
-
-        const metaSpan = document.createElement("span");
-        metaSpan.className = "accordion-meta";
-        metaSpan.textContent = b.nomeExp || "";
+        titleSpan.textContent = `Banner ${num}`;
 
         const arrow = document.createElement("span");
         arrow.className = "accordion-arrow";
         arrow.textContent = "▸";
 
         header.appendChild(titleSpan);
-        header.appendChild(metaSpan);
         header.appendChild(arrow);
 
         const body = document.createElement("div");
@@ -678,7 +683,7 @@ function renderBannerList(tabId, banners) {
         const grid = document.createElement("div");
         grid.className = "fields-grid";
 
-        function addField(labelText, value, full = false, isTextarea = false) {
+        function addInputField(labelText, value, full = false) {
             const field = document.createElement("div");
             field.className = "field";
             if (full) field.classList.add("field-full");
@@ -686,15 +691,9 @@ function renderBannerList(tabId, banners) {
             const label = document.createElement("label");
             label.textContent = labelText;
 
-            let input;
-            if (isTextarea) {
-                input = document.createElement("textarea");
-                input.className = "readonly readonly-multiline";
-            } else {
-                input = document.createElement("input");
-                input.type = "text";
-                input.className = "readonly";
-            }
+            const input = document.createElement("input");
+            input.type = "text";
+            input.className = "readonly";
             input.readOnly = true;
             input.value = value || "";
 
@@ -703,21 +702,68 @@ function renderBannerList(tabId, banners) {
             grid.appendChild(field);
         }
 
-        addField("tipoExibicao", b.tipoExibicao, false);
-        addField("dataInicio", b.dataInicio, false);
-        addField("dataFim", b.dataFim, false);
-        addField("periodoExibicao", b.periodoExibicao, false);
-        addField("Channel", b.channel, false);
-        addField("ContentZone/CampaignPosition", b.contentZone, true);
-        addField("Template", b.template, false);
-        addField("ComponentStyle", b.componentStyle, false);
-        addField("Título", b.titulo, true);
-        addField("Subtitulo", b.subtitulo, true);
-        addField("CTA", b.cta, false);
-        addField("URL de Redirecionamento", b.url, true);
-        addField("Imagem", b.imagem, true);
-        addField("Observação", b.observacao, true, true);
-        addField("JSON gerado", b.json, true, true);
+        function addCodeField(labelText, value) {
+            const field = document.createElement("div");
+            field.className = "field field-full";
+
+            const label = document.createElement("label");
+            label.textContent = labelText;
+
+            const pre = document.createElement("pre");
+            pre.className = "code-block";
+            pre.textContent = value || "";
+
+            field.appendChild(label);
+            field.appendChild(pre);
+            grid.appendChild(field);
+        }
+
+        // Metadados compactos no topo
+        const meta1 = [];
+        if (b.tipoExibicao) meta1.push(`tipoExibicao: ${b.tipoExibicao}`);
+        if (b.dataInicio) meta1.push(`dataInicio: ${b.dataInicio}`);
+        if (b.dataFim) meta1.push(`dataFim: ${b.dataFim}`);
+        if (b.periodoExibicao) meta1.push(`periodoExibicao: ${b.periodoExibicao}`);
+        if (b.tela) meta1.push(`Tela: ${b.tela}`);
+
+        if (meta1.length > 0) {
+            const meta = document.createElement("div");
+            meta.className = "meta-row";
+            meta.textContent = meta1.join(" • ");
+            block.appendChild(meta);
+        }
+
+        const meta2 = [];
+        if (b.titulo) meta2.push(`Título: ${b.titulo}`);
+        if (b.subtitulo) meta2.push(`Subtítulo: ${b.subtitulo}`);
+        if (b.cta) meta2.push(`CTA: ${b.cta}`);
+
+        if (meta2.length > 0) {
+            const meta = document.createElement("div");
+            meta.className = "meta-row";
+            meta.textContent = meta2.join(" • ");
+            block.appendChild(meta);
+        }
+
+        if (b.observacao) {
+            const obs = document.createElement("div");
+            obs.className = "meta-row";
+            obs.textContent = `Obs: ${b.observacao}`;
+            block.appendChild(obs);
+        }
+
+        // Campos copiáveis
+        addInputField("Nome Experiência", b.nomeExp, true);
+        addInputField("Channel", b.channel, false);
+        addInputField("ContentZone/CampaignPosition", b.contentZone, true);
+        addInputField("Template", b.template, false);
+        addInputField("ComponentStyle", b.componentStyle, false);
+        addInputField("URL de Redirecionamento", b.url, true);
+        addInputField("Imagem", b.imagem, true);
+
+        if (b.json) {
+            addCodeField("JSON gerado", b.json);
+        }
 
         block.appendChild(grid);
         body.appendChild(block);
@@ -742,14 +788,14 @@ function renderMktScreenView(tabId, mkt) {
         return;
     }
 
-    // Info geral da MktScreen (sempre visível quando o pai abrir)
+    // Info geral da MktScreen (macro)
     const geral = document.createElement("div");
     geral.className = "subsection";
 
     const grid = document.createElement("div");
     grid.className = "fields-grid";
 
-    function addField(labelText, value, full = false, isTextarea = false) {
+    function addInputField(labelText, value, full = false) {
         const field = document.createElement("div");
         field.className = "field";
         if (full) field.classList.add("field-full");
@@ -757,15 +803,9 @@ function renderMktScreenView(tabId, mkt) {
         const label = document.createElement("label");
         label.textContent = labelText;
 
-        let input;
-        if (isTextarea) {
-            input = document.createElement("textarea");
-            input.className = "readonly readonly-multiline";
-        } else {
-            input = document.createElement("input");
-            input.type = "text";
-            input.className = "readonly";
-        }
+        const input = document.createElement("input");
+        input.type = "text";
+        input.className = "readonly";
         input.readOnly = true;
         input.value = value || "";
 
@@ -774,11 +814,37 @@ function renderMktScreenView(tabId, mkt) {
         grid.appendChild(field);
     }
 
-    addField("URL MktScreen", mkt.url, true);
-    addField("Blocos (informado no card)", mkt.blocosQtd, false);
-    addField("Blocos (encontrados)", mkt.blocos ? String(mkt.blocos.length) : "0", false);
+    const macroNomeExp =
+        mkt.nomeExpMacro ||
+        (mkt.blocos && mkt.blocos.length > 0 ? mkt.blocos[0].nomeExp : "");
+
+    // Metadado topo (posição da jornada)
+    const metaTop = document.createElement("div");
+    metaTop.className = "meta-row";
+    const partsTop = [];
+    if (mkt.posicaoJornada || mkt.posicaoHeader) {
+        partsTop.push(
+            `posicaoJornada: ${mkt.posicaoJornada || mkt.posicaoHeader}`
+        );
+    }
+    metaTop.textContent = partsTop.join(" • ");
+    if (partsTop.length > 0) {
+        geral.appendChild(metaTop);
+    }
+
+    // Inputs macro: Nome Experiência + URL (copiáveis)
+    addInputField("Nome Experiência", macroNomeExp, true);
+    addInputField("URL MktScreen", mkt.url || "", true);
 
     geral.appendChild(grid);
+
+    const meta2 = document.createElement("div");
+    meta2.className = "meta-row";
+    meta2.textContent =
+        `Blocos (informado no card): ${mkt.blocosQtd || "-"} • ` +
+        `Blocos (encontrados): ${mkt.blocos ? String(mkt.blocos.length) : "0"}`;
+    geral.appendChild(meta2);
+
     container.appendChild(geral);
 
     // Blocos individuais como accordions internos
@@ -793,18 +859,13 @@ function renderMktScreenView(tabId, mkt) {
 
             const t = document.createElement("span");
             t.className = "accordion-title";
-            t.textContent = `Bloco ${b.numero || (index + 1)} — ${b.template || ""}`;
-
-            const meta = document.createElement("span");
-            meta.className = "accordion-meta";
-            meta.textContent = b.nomeExp || "";
+            t.textContent = `Bloco ${b.numero || (index + 1)}`;
 
             const arrow = document.createElement("span");
             arrow.className = "accordion-arrow";
             arrow.textContent = "▸";
 
             header.appendChild(t);
-            header.appendChild(meta);
             header.appendChild(arrow);
 
             const body = document.createElement("div");
@@ -817,7 +878,7 @@ function renderMktScreenView(tabId, mkt) {
             const gridBloco = document.createElement("div");
             gridBloco.className = "fields-grid";
 
-            function addFieldLike(labelText, value, full = false, isTextarea = false) {
+            function addInputFieldBloco(labelText, value, full = false) {
                 const field = document.createElement("div");
                 field.className = "field";
                 if (full) field.classList.add("field-full");
@@ -825,15 +886,9 @@ function renderMktScreenView(tabId, mkt) {
                 const label = document.createElement("label");
                 label.textContent = labelText;
 
-                let input;
-                if (isTextarea) {
-                    input = document.createElement("textarea");
-                    input.className = "readonly readonly-multiline";
-                } else {
-                    input = document.createElement("input");
-                    input.type = "text";
-                    input.className = "readonly";
-                }
+                const input = document.createElement("input");
+                input.type = "text";
+                input.className = "readonly";
                 input.readOnly = true;
                 input.value = value || "";
 
@@ -842,11 +897,25 @@ function renderMktScreenView(tabId, mkt) {
                 gridBloco.appendChild(field);
             }
 
-            addFieldLike("Nome Campanha", b.nomeCampanha, true, false);
-            addFieldLike("Título", b.titulo, true, false);
-            addFieldLike("Subtítulo", b.subtitulo, true, false);
-            addFieldLike("Imagem", b.imagem, true, false);
-            addFieldLike("JSON do bloco", b.json, true, true);
+            function addCodeFieldBloco(labelText, value) {
+                const field = document.createElement("div");
+                field.className = "field field-full";
+
+                const label = document.createElement("label");
+                label.textContent = labelText;
+
+                const pre = document.createElement("pre");
+                pre.className = "code-block";
+                pre.textContent = value || "";
+
+                field.appendChild(label);
+                field.appendChild(pre);
+                gridBloco.appendChild(field);
+            }
+
+            // Apenas Nome Experiência + JSON do bloco
+            addInputFieldBloco("Nome Experiência", b.nomeExp, true);
+            addCodeFieldBloco("JSON do bloco", b.json);
 
             block.appendChild(gridBloco);
             body.appendChild(block);
@@ -900,12 +969,13 @@ function createTabFromState(tabId, data) {
     content.innerHTML = `
         <h2>Entrada do Card</h2>
         <div class="field field-full">
-            <label>Cole aqui o card completo:</label>
-            <textarea class="input readonly-multiline"
-                    oninput="processCard('${tabId}', this.value)">${data.input || ""}</textarea>
+            <textarea class="card-input"
+        rows="1"
+        oninput="processCard('${tabId}', this.value)"
+        onpaste="handlePaste(event)">${data.input || ""}</textarea>
         </div>
 
-        <h2>Divisão 1 — Título do Card</h2>
+        <h2>Título do Card</h2>
         <div class="fields-grid">
             <div class="field">
                 <label>Nome do Card / Jornada</label>
@@ -913,65 +983,29 @@ function createTabFromState(tabId, data) {
             </div>
 
             <div class="field">
-                <label>Descrição do Card</label>
-                <input id="desc_${tabId}" class="readonly" type="text" readonly value="${data.descricao || ""}">
+                <label>Base</label>
+                <input id="base_${tabId}" class="readonly" type="text" readonly value="${data.base || ""}">
             </div>
         </div>
 
-        <!-- Informações Gerais em accordion -->
-        <div class="accordion">
-            <div class="accordion-header" data-accordion-target="info_${tabId}">
-                <span class="accordion-title">Informações Gerais</span>
-                <span class="accordion-arrow">▸</span>
+        <div class="info-group">
+            <div class="info-row">
+                <span class="info-label">Descrição do Card:</span>
+                <span id="desc_${tabId}" class="info-value">${data.descricao || ""}</span>
+                <span class="info-label" style="margin-left:12px;">SOLICITANTE:</span>
+                <span id="solicitanteText_${tabId}" class="info-value">${data.solicitante || ""}</span>
             </div>
-            <div id="info_${tabId}" class="accordion-body">
-                <div class="fields-grid">
-                    <div class="field">
-                        <label>AREA</label>
-                        <input id="area_${tabId}" class="readonly" type="text" readonly value="${data.area || ""}">
-                    </div>
-
-                    <div class="field">
-                        <label>SOLICITANTE</label>
-                        <input id="solicitante_${tabId}" class="readonly" type="text" readonly value="${data.solicitante || ""}">
-                    </div>
-
-                    <div class="field">
-                        <label>MARCA</label>
-                        <input id="marca_${tabId}" class="readonly" type="text" readonly value="${data.marca || ""}">
-                    </div>
-
-                    <div class="field field-full">
-                        <label>DESCRICAO CAMPANHA</label>
-                        <input id="descCamp_${tabId}" class="readonly" type="text" readonly value="${data.descCamp || ""}">
-                    </div>
-
-                    <div class="field field-full">
-                        <label>Canais (somente > 0)</label>
-                        <div id="canais_${tabId}" class="channels-wrapper"></div>
-                    </div>
-                </div>
+            <div class="info-row">
+                <span class="info-label">DESCRICAO CAMPANHA:</span>
+                <span id="descCamp_${tabId}" class="info-value">${data.descCamp || ""}</span>
             </div>
-        </div>
-
-        <!-- Dados em accordion -->
-        <div class="accordion">
-            <div class="accordion-header" data-accordion-target="dados_${tabId}">
-                <span class="accordion-title">Dados</span>
-                <span class="accordion-arrow">▸</span>
+            <div class="info-row">
+                <span class="info-label">Observação:</span>
+                <span id="obsText_${tabId}" class="info-value">${data.observacao || ""}</span>
             </div>
-            <div id="dados_${tabId}" class="accordion-body">
-                <div class="fields-grid">
-                    <div class="field">
-                        <label>Base</label>
-                        <input id="base_${tabId}" class="readonly" type="text" readonly value="${data.base || ""}">
-                    </div>
-
-                    <div class="field field-full">
-                        <label>Observação</label>
-                        <textarea id="obs_${tabId}" class="readonly readonly-multiline" readonly>${data.observacao || ""}</textarea>
-                    </div>
-                </div>
+            <div class="info-row">
+                <span class="info-label">Canais:</span>
+                <span id="canaisText_${tabId}" class="info-value"></span>
             </div>
         </div>
 
@@ -1084,26 +1118,23 @@ function processCard(tabId, texto) {
     const banners = comm.banners;
     const mkt = comm.mktScreen;
 
-    // Divisão 1
+    // Título do card (inputs copiáveis)
     setFieldValue("nome_", tabId, titulo.nome);
-    setFieldValue("desc_", tabId, titulo.descricao);
+    setFieldValue("base_", tabId, dados.base);
 
     const tabTitle = document.querySelector(`#${tabId} .tab-title`);
     if (tabTitle) {
         tabTitle.textContent = titulo.nome || "Card";
     }
 
-    // Divisão 2 (Informações Gerais)
-    setFieldValue("area_", tabId, info.area);
-    setFieldValue("solicitante_", tabId, info.solicitante);
-    setFieldValue("marca_", tabId, info.marca);
-    setFieldValue("descCamp_", tabId, info.descCamp);
-    renderCanais(tabId, info.canais);
-    // tempo é lido mas não exibido de propósito
+    // Informações gerais (textos fora de readonly)
+    setTextValue("desc_" + tabId, titulo.descricao);
+    setTextValue("solicitanteText_" + tabId, info.solicitante);
+    setTextValue("descCamp_" + tabId, info.descCamp);
+    setTextValue("obsText_" + tabId, dados.observacao);
 
-    // Divisão 3 (Dados)
-    setFieldValue("base_", tabId, dados.base);
-    setFieldValue("obs_", tabId, dados.observacao);
+    renderCanais(tabId, info.canais);
+    // tempo existe, mas não exibimos (fica só no estado)
 
     // Push / Banner / Mkt
     renderPushList(tabId, pushes);
@@ -1134,6 +1165,20 @@ function processCard(tabId, texto) {
 
     autoResizeTextareas(tabId);
     saveState();
+}
+
+function handlePaste(event) {
+    const ta = event.target;
+
+    // deixa o colar acontecer primeiro, depois ajusta
+    setTimeout(() => {
+        // força scroll pro topo
+        ta.scrollTop = 0;
+
+        // joga o cursor pro começo do texto
+        ta.selectionStart = 0;
+        ta.selectionEnd = 0;
+    }, 0);
 }
 
 // ===================== FECHAR ABA =====================
