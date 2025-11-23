@@ -1,5 +1,4 @@
-/* === DARK MODE REAL === */
-
+/* === DARK MODE GERAL === */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -7,12 +6,12 @@ body {
     color: #e5e5e5;
 }
 
-/* Corrige margens do container */
+/* Container do conteúdo */
 .content-container {
     padding: 20px;
 }
 
-/* Seções (caixas) */
+/* === SEÇÕES === */
 .section {
     background: #1a1a1a;
     padding: 20px;
@@ -22,7 +21,7 @@ body {
     box-shadow: 0 0 8px rgba(0,0,0,0.4);
 }
 
-/* Labels */
+/* === CAMPOS === */
 .field label {
     display: block;
     margin-bottom: 6px;
@@ -30,7 +29,6 @@ body {
     color: #cccccc;
 }
 
-/* Inputs */
 .input, .readonly {
     width: 100%;
     padding: 10px;
@@ -41,13 +39,12 @@ body {
     color: #f0f0f0;
 }
 
-/* Readonly */
 .readonly {
     background: #151515;
     border-color: #444;
 }
 
-/* Tabs */
+/* === ABAS === */
 .tabs-container {
     display: flex;
     align-items: center;
@@ -57,13 +54,18 @@ body {
     border-bottom: 1px solid #222;
 }
 
+/* Aba padrão */
 .tab {
-    padding: 8px 14px;
+    position: relative;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 12px;
     background: #222;
     color: #bbb;
     border-radius: 6px 6px 0 0;
-    cursor: pointer;
     border: 1px solid #333;
+    cursor: pointer;
     transition: background 0.25s ease;
 }
 
@@ -72,12 +74,35 @@ body {
     color: #fff;
 }
 
+/* Aba ativa */
 .tab.active {
     background: #3b82f6;
     color: #fff;
     border-color: #3b82f6;
 }
 
+/* Aba título (clicável) */
+.tab-title {
+    flex: 1;
+    cursor: pointer;
+}
+
+/* Botão de fechar aba */
+.close-tab {
+    cursor: pointer;
+    color: #888;
+    font-weight: bold;
+    padding: 0 4px;
+    border-radius: 4px;
+    transition: 0.2s;
+}
+
+.close-tab:hover {
+    background: #ff4444;
+    color: white;
+}
+
+/* Botão "+" (add tab) */
 .add-tab {
     background: #111;
     color: #fff;

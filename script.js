@@ -13,21 +13,54 @@ function loadState() {
     const saved = localStorage.getItem("cardExtractData");
     if (saved) {
         tabsState = JSON.parse(saved);
+
+        // recalcula tabCount baseado nos IDs existentes
+        const ids = Object.keys(tabsState.tabs)
+            .map(id => parseInt(id.replace("tab_", "")))
+            .filter(n => !isNaN(n));
+
+        tabCount = ids.length > 0 ? Math.max(...ids) : 0;
     }
 }
 
+
 function createTabFromState(tabId, data) {
-    // Criar aba visual
     const tab = document.createElement("div");
     tab.className = "tab";
     tab.id = tabId;
-    tab.textContent = data.title || "Card";
+
+    // Clique na aba inteira
     tab.onclick = () => switchTab(tabId);
+
+    // Título da aba
+    const title = document.createElement("span");
+    title.className = "tab-title";
+    title.textContent = data.title || "Card";
+
+    // Botão de fechar
+    const close = document.createElement("span");
+    close.className = "close-tab";
+    close.textContent = "×";
+    close.onclick = (e) => {
+        e.stopPropagation();
+
+        const tabInfo = tabsState.tabs[tabId];
+        const nomeAba = tabInfo?.title || "Card";
+
+        const querFechar = confirm(`Tem certeza que deseja fechar a aba "${nomeAba}"?`);
+
+        if (querFechar) {
+            closeTab(tabId);
+        }
+    };
+
+    tab.appendChild(title);
+    tab.appendChild(close);
 
     const addBtn = document.getElementById("add-tab");
     document.getElementById("tabs-container").insertBefore(tab, addBtn);
 
-    // Criar conteúdo
+    // Conteúdo
     const content = document.createElement("div");
     content.className = "section";
     content.id = "content_" + tabId;
@@ -56,11 +89,12 @@ function createTabFromState(tabId, data) {
     tabCount++;
 }
 
+
 function createTab() {
     const tabId = "tab_" + (tabCount + 1);
 
     tabsState.tabs[tabId] = {
-        title: "Card " + (tabCount + 1),
+        title: "Card",
         input: "",
         nome: "",
         descricao: ""
@@ -99,7 +133,9 @@ function processCard(tabId, texto) {
     document.getElementById("nome_" + tabId).value = nome;
     document.getElementById("desc_" + tabId).value = desc;
 
-    document.getElementById(tabId).textContent = nome || "Card";
+    // Atualiza SOMENTE o título da aba
+    const tabTitle = document.querySelector(`#${tabId} .tab-title`);
+    tabTitle.textContent = nome || "Card";
 
     // Atualiza estado
     tabsState.tabs[tabId].title = nome || "Card";
@@ -110,16 +146,50 @@ function processCard(tabId, texto) {
     saveState();
 }
 
-// Inicialização da página
+function closeTab(tabId) {
+
+    const tabElement = document.getElementById(tabId);
+
+    // descobre a aba anterior e a próxima
+    const prev = tabElement.previousElementSibling?.id;
+    const next = tabElement.nextElementSibling?.id;
+
+    // remove
+    document.getElementById(tabId).remove();
+    document.getElementById("content_" + tabId).remove();
+
+    delete tabsState.tabs[tabId];
+
+    // decide qual aba ativar
+    let newActive = null;
+
+    if (next && tabsState.tabs[next]) newActive = next;
+    else if (prev && tabsState.tabs[prev]) newActive = prev;
+
+    tabsState.activeTab = newActive;
+
+    if (newActive) switchTab(newActive);
+
+    saveState();
+}
+
+
+// Inicialização
 loadState();
 
 if (Object.keys(tabsState.tabs).length === 0) {
-    createTab(); // cria aba inicial
+    createTab();
 } else {
     for (const tabId in tabsState.tabs) {
         createTabFromState(tabId, tabsState.tabs[tabId]);
     }
+    if (tabsState.activeTab && document.getElementById(tabsState.activeTab)) {
     switchTab(tabsState.activeTab);
+} else {
+    const first = Object.keys(tabsState.tabs)[0];
+    if (first) switchTab(first);
+}
+
 }
 
 document.getElementById("add-tab").onclick = createTab;
