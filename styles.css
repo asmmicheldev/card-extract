@@ -21,7 +21,7 @@ body {
     box-shadow: 0 0 8px rgba(0,0,0,0.4);
 }
 
-/* Títulos das divisões */
+/* Títulos das divisões (só usados em alguns pontos) */
 .section h2 {
     margin-top: 22px;
     margin-bottom: 10px;
@@ -30,17 +30,17 @@ body {
 
 /* === LAYOUT DE CAMPOS (GRID) === */
 
-/* Grid genérico de campos: cria 2–3 colunas dependendo da largura da tela */
+/* Grid genérico de campos */
 .fields-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-    gap: 12px 16px;
-    margin-bottom: 10px;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 8px 12px;
+    margin-bottom: 8px;
 }
 
 /* Campo padrão */
 .field {
-    margin-bottom: 10px; /* ainda funciona fora de grid */
+    margin-bottom: 8px; /* ainda funciona fora de grid */
 }
 
 /* Campo que deve SEMPRE ocupar a linha inteira dentro do grid */
@@ -52,17 +52,18 @@ body {
 
 .field label {
     display: block;
-    margin-bottom: 6px;
+    margin-bottom: 4px;
     font-weight: bold;
     color: #cccccc;
+    font-size: 12px;
 }
 
 .input,
 .readonly {
     width: 100%;
-    padding: 8px 10px;
+    padding: 6px 8px;
     border-radius: 6px;
-    font-size: 14px;
+    font-size: 13px;
     border: 1px solid #333;
     background: #111;
     color: #f0f0f0;
@@ -76,7 +77,7 @@ body {
 
 /* Textareas longos (observações, JSON, card completo) */
 .readonly-multiline {
-    min-height: 120px;
+    min-height: 40px;
     resize: vertical;
     white-space: pre-wrap;
 }
@@ -165,40 +166,88 @@ body {
     cursor: default;
 }
 
-/* === CARDS INTERNOS (cada COMUNICAÇÃO / BLOCO) === */
+/* === CARDS INTERNOS (conteúdo dentro de accordions) === */
 
 .subsection {
     background: #111;
     border: 1px solid #2b2b2b;
     border-radius: 8px;
-    padding: 12px 14px;
-    margin-bottom: 12px;
-}
-
-.subsection-header {
-    display: flex;
-    justify-content: space-between;
-    gap: 8px;
-    align-items: center;
+    padding: 10px 10px;
     margin-bottom: 8px;
-    flex-wrap: wrap;
-    font-size: 13px;
-    color: #aaaaaa;
 }
 
-.subsection-title {
-    font-weight: bold;
-    color: #f0f0f0;
-}
-
-.subsection-meta {
-    font-size: 12px;
-    color: #888888;
-}
-
+/* Hint quando não tem nada */
 .empty-hint {
     font-size: 13px;
     color: #777777;
     font-style: italic;
     margin-bottom: 8px;
+}
+
+/* === ACCORDION / TOGGLES === */
+
+.accordion {
+    border: 1px solid #2b2b2b;
+    border-radius: 8px;
+    margin-bottom: 12px;
+    background: #111;
+}
+
+.accordion-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    cursor: pointer;
+    user-select: none;
+}
+
+.accordion-header:hover {
+    background: #1f1f1f;
+}
+
+.accordion-title {
+    font-weight: 600;
+    color: #f0f0f0;
+    font-size: 14px;
+}
+
+.accordion-meta {
+    flex: 1;
+    text-align: right;
+    font-size: 12px;
+    color: #9a9a9a;
+}
+
+.accordion-arrow {
+    font-size: 12px;
+    transition: transform 0.15s ease;
+}
+
+.accordion-header.open .accordion-arrow {
+    transform: rotate(90deg);
+}
+
+.accordion-body {
+    display: none;
+    padding: 6px 10px 10px;
+    border-top: 1px solid #2b2b2b;
+}
+
+.accordion-body.open {
+    display: block;
+}
+
+.accordion-item {
+    margin-bottom: 6px;
+    border-radius: 6px;
+    border: 1px solid #222;
+    background: #151515;
+}
+
+/* Header menor para itens internos (Push 1, Push 2, etc.) */
+.accordion-header-small {
+    padding: 6px 10px;
+    font-size: 13px;
 }

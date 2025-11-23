@@ -32,6 +32,17 @@ function setFieldValue(prefix, tabId, value) {
     }
 }
 
+// auto-resize de textareas para não ficar gigante
+function autoResizeTextareas(tabId) {
+    const content = document.getElementById("content_" + tabId);
+    if (!content) return;
+    const textareas = content.querySelectorAll("textarea.readonly-multiline");
+    textareas.forEach(t => {
+        t.style.height = "auto";
+        t.style.height = (t.scrollHeight + 4) + "px";
+    });
+}
+
 // ===================== CANAIS (>0) =====================
 
 function renderCanais(tabId, canaisString) {
@@ -279,7 +290,6 @@ function parsePushBlock(subset) {
         } else if (linha.startsWith("Tem Váriavel?")) {
             temVar = linha.replace("Tem Váriavel?", "").trim();
         } else if (linha.startsWith("Tem Variável?")) {
-            // caso escrevam certo em algum card
             temVar = linha.replace("Tem Variável?", "").trim();
         } else if (linha.startsWith("Tipo Váriavel:")) {
             tipoVar = linha.split(":").slice(1).join(":").trim();
@@ -416,7 +426,6 @@ function parseMktBloco(blocoLines) {
         } else if (linha.startsWith("Template:")) {
             template = linha.split(":").slice(1).join(":").trim();
         } else if (linha.startsWith("Titulo") || linha.startsWith("Título")) {
-            // cobre "Titulo:" e "Título........:"
             const partes = linha.split(":");
             partes.shift();
             titulo = partes.join(":").trim();
@@ -445,13 +454,11 @@ function parseMktScreenBlock(subset) {
     let blocosQtd = "";
     const blocos = [];
 
-    // posicaoJornada
     const linhaPos = subset.find(l => l.trim().startsWith("posicaoJornada:"));
     if (linhaPos) {
         posicaoJornada = linhaPos.split(":")[1].trim();
     }
 
-    // URL + Blocos
     const idxMktLine = subset.findIndex(l => l.trim() === "MktScreen");
     if (idxMktLine !== -1) {
         for (let i = idxMktLine + 1; i < subset.length; i++) {
@@ -463,13 +470,11 @@ function parseMktScreenBlock(subset) {
             } else if (linha.startsWith("Blocos:")) {
                 blocosQtd = linha.split(":")[1].trim();
             } else if (linha.startsWith("---------- POSIÇÃO")) {
-                // a partir daqui lidamos nos loops abaixo
                 break;
             }
         }
     }
 
-    // Blocos (POSIÇÃO 1, 2, 3, ...)
     for (let i = 0; i < subset.length; i++) {
         const line = subset[i].trim();
         if (line.startsWith("---------- POSIÇÃO")) {
@@ -545,25 +550,37 @@ function renderPushList(tabId, pushes) {
     }
 
     pushes.forEach((p, index) => {
-        const block = document.createElement("div");
-        block.className = "subsection";
+        const item = document.createElement("div");
+        item.className = "accordion-item";
 
         const header = document.createElement("div");
-        header.className = "subsection-header";
+        header.className = "accordion-header accordion-header-small";
+        header.dataset.accordionTarget = `push_${tabId}_${index}`;
 
         const titleSpan = document.createElement("span");
-        titleSpan.className = "subsection-title";
+        titleSpan.className = "accordion-title";
         const num = p.numero || (index + 1);
         const pos = p.posicaoJornada || p.posicaoHeader || "";
         titleSpan.textContent = `Push ${num} — ${pos}`;
 
-        const nomeSpan = document.createElement("span");
-        nomeSpan.className = "subsection-meta";
-        nomeSpan.textContent = p.nomeCom || "";
+        const metaSpan = document.createElement("span");
+        metaSpan.className = "accordion-meta";
+        metaSpan.textContent = p.nomeCom || "";
+
+        const arrow = document.createElement("span");
+        arrow.className = "accordion-arrow";
+        arrow.textContent = "▸";
 
         header.appendChild(titleSpan);
-        header.appendChild(nomeSpan);
-        block.appendChild(header);
+        header.appendChild(metaSpan);
+        header.appendChild(arrow);
+
+        const body = document.createElement("div");
+        body.className = "accordion-body";
+        body.id = `push_${tabId}_${index}`;
+
+        const block = document.createElement("div");
+        block.className = "subsection";
 
         const grid = document.createElement("div");
         grid.className = "fields-grid";
@@ -604,7 +621,11 @@ function renderPushList(tabId, pushes) {
         addField("Observação", p.observacao, true, true);
 
         block.appendChild(grid);
-        container.appendChild(block);
+        body.appendChild(block);
+
+        item.appendChild(header);
+        item.appendChild(body);
+        container.appendChild(item);
     });
 }
 
@@ -623,24 +644,36 @@ function renderBannerList(tabId, banners) {
     }
 
     banners.forEach((b, index) => {
-        const block = document.createElement("div");
-        block.className = "subsection";
+        const item = document.createElement("div");
+        item.className = "accordion-item";
 
         const header = document.createElement("div");
-        header.className = "subsection-header";
+        header.className = "accordion-header accordion-header-small";
+        header.dataset.accordionTarget = `banner_${tabId}_${index}`;
 
         const titleSpan = document.createElement("span");
-        titleSpan.className = "subsection-title";
+        titleSpan.className = "accordion-title";
         const num = b.numero || (index + 1);
         titleSpan.textContent = `Banner ${num} — Tela ${b.tela || "N/A"}`;
 
-        const nomeSpan = document.createElement("span");
-        nomeSpan.className = "subsection-meta";
-        nomeSpan.textContent = b.nomeExp || "";
+        const metaSpan = document.createElement("span");
+        metaSpan.className = "accordion-meta";
+        metaSpan.textContent = b.nomeExp || "";
+
+        const arrow = document.createElement("span");
+        arrow.className = "accordion-arrow";
+        arrow.textContent = "▸";
 
         header.appendChild(titleSpan);
-        header.appendChild(nomeSpan);
-        block.appendChild(header);
+        header.appendChild(metaSpan);
+        header.appendChild(arrow);
+
+        const body = document.createElement("div");
+        body.className = "accordion-body";
+        body.id = `banner_${tabId}_${index}`;
+
+        const block = document.createElement("div");
+        block.className = "subsection";
 
         const grid = document.createElement("div");
         grid.className = "fields-grid";
@@ -687,7 +720,11 @@ function renderBannerList(tabId, banners) {
         addField("JSON gerado", b.json, true, true);
 
         block.appendChild(grid);
-        container.appendChild(block);
+        body.appendChild(block);
+
+        item.appendChild(header);
+        item.appendChild(body);
+        container.appendChild(item);
     });
 }
 
@@ -705,24 +742,9 @@ function renderMktScreenView(tabId, mkt) {
         return;
     }
 
-    // Info geral da MktScreen
+    // Info geral da MktScreen (sempre visível quando o pai abrir)
     const geral = document.createElement("div");
     geral.className = "subsection";
-
-    const header = document.createElement("div");
-    header.className = "subsection-header";
-
-    const titleSpan = document.createElement("span");
-    titleSpan.className = "subsection-title";
-    titleSpan.textContent = `MktScreen — posicaoJornada ${mkt.posicaoJornada || mkt.posicaoHeader || ""}`;
-
-    const metaSpan = document.createElement("span");
-    metaSpan.className = "subsection-meta";
-    metaSpan.textContent = `Blocos: ${mkt.blocosQtd || (mkt.blocos ? mkt.blocos.length : 0)}`;
-
-    header.appendChild(titleSpan);
-    header.appendChild(metaSpan);
-    geral.appendChild(header);
 
     const grid = document.createElement("div");
     grid.className = "fields-grid";
@@ -753,67 +775,86 @@ function renderMktScreenView(tabId, mkt) {
     }
 
     addField("URL MktScreen", mkt.url, true);
+    addField("Blocos (informado no card)", mkt.blocosQtd, false);
+    addField("Blocos (encontrados)", mkt.blocos ? String(mkt.blocos.length) : "0", false);
+
     geral.appendChild(grid);
     container.appendChild(geral);
 
-    // Blocos
+    // Blocos individuais como accordions internos
     if (mkt.blocos && mkt.blocos.length > 0) {
-        mkt.blocos.forEach(b => {
+        mkt.blocos.forEach((b, index) => {
+            const item = document.createElement("div");
+            item.className = "accordion-item";
+
+            const header = document.createElement("div");
+            header.className = "accordion-header accordion-header-small";
+            header.dataset.accordionTarget = `mkt_${tabId}_${index}`;
+
+            const t = document.createElement("span");
+            t.className = "accordion-title";
+            t.textContent = `Bloco ${b.numero || (index + 1)} — ${b.template || ""}`;
+
+            const meta = document.createElement("span");
+            meta.className = "accordion-meta";
+            meta.textContent = b.nomeExp || "";
+
+            const arrow = document.createElement("span");
+            arrow.className = "accordion-arrow";
+            arrow.textContent = "▸";
+
+            header.appendChild(t);
+            header.appendChild(meta);
+            header.appendChild(arrow);
+
+            const body = document.createElement("div");
+            body.className = "accordion-body";
+            body.id = `mkt_${tabId}_${index}`;
+
             const block = document.createElement("div");
             block.className = "subsection";
 
-            const h = document.createElement("div");
-            h.className = "subsection-header";
+            const gridBloco = document.createElement("div");
+            gridBloco.className = "fields-grid";
 
-            const t = document.createElement("span");
-            t.className = "subsection-title";
-            t.textContent = `Bloco ${b.numero || ""} — ${b.template || ""}`;
+            function addFieldLike(labelText, value, full = false, isTextarea = false) {
+                const field = document.createElement("div");
+                field.className = "field";
+                if (full) field.classList.add("field-full");
 
-            const meta = document.createElement("span");
-            meta.className = "subsection-meta";
-            meta.textContent = b.nomeExp || "";
+                const label = document.createElement("label");
+                label.textContent = labelText;
 
-            h.appendChild(t);
-            h.appendChild(meta);
-            block.appendChild(h);
+                let input;
+                if (isTextarea) {
+                    input = document.createElement("textarea");
+                    input.className = "readonly readonly-multiline";
+                } else {
+                    input = document.createElement("input");
+                    input.type = "text";
+                    input.className = "readonly";
+                }
+                input.readOnly = true;
+                input.value = value || "";
 
-            const g = document.createElement("div");
-            g.className = "fields-grid";
+                field.appendChild(label);
+                field.appendChild(input);
+                gridBloco.appendChild(field);
+            }
 
-            addFieldLike(g, "Nome Campanha", b.nomeCampanha, true, false);
-            addFieldLike(g, "Título", b.titulo, true, false);
-            addFieldLike(g, "Subtítulo", b.subtitulo, true, false);
-            addFieldLike(g, "Imagem", b.imagem, true, false);
-            addFieldLike(g, "JSON do bloco", b.json, true, true);
+            addFieldLike("Nome Campanha", b.nomeCampanha, true, false);
+            addFieldLike("Título", b.titulo, true, false);
+            addFieldLike("Subtítulo", b.subtitulo, true, false);
+            addFieldLike("Imagem", b.imagem, true, false);
+            addFieldLike("JSON do bloco", b.json, true, true);
 
-            block.appendChild(g);
-            container.appendChild(block);
+            block.appendChild(gridBloco);
+            body.appendChild(block);
+
+            item.appendChild(header);
+            item.appendChild(body);
+            container.appendChild(item);
         });
-    }
-
-    function addFieldLike(gridEl, labelText, value, full = false, isTextarea = false) {
-        const field = document.createElement("div");
-        field.className = "field";
-        if (full) field.classList.add("field-full");
-
-        const label = document.createElement("label");
-        label.textContent = labelText;
-
-        let input;
-        if (isTextarea) {
-            input = document.createElement("textarea");
-            input.className = "readonly readonly-multiline";
-        } else {
-            input = document.createElement("input");
-            input.type = "text";
-            input.className = "readonly";
-        }
-        input.readOnly = true;
-        input.value = value || "";
-
-        field.appendChild(label);
-        field.appendChild(input);
-        gridEl.appendChild(field);
     }
 }
 
@@ -877,65 +918,99 @@ function createTabFromState(tabId, data) {
             </div>
         </div>
 
-        <h2>Divisão 2 — Informações Gerais</h2>
-        <div class="fields-grid">
-            <div class="field">
-                <label>AREA</label>
-                <input id="area_${tabId}" class="readonly" type="text" readonly value="${data.area || ""}">
+        <!-- Informações Gerais em accordion -->
+        <div class="accordion">
+            <div class="accordion-header" data-accordion-target="info_${tabId}">
+                <span class="accordion-title">Informações Gerais</span>
+                <span class="accordion-arrow">▸</span>
             </div>
+            <div id="info_${tabId}" class="accordion-body">
+                <div class="fields-grid">
+                    <div class="field">
+                        <label>AREA</label>
+                        <input id="area_${tabId}" class="readonly" type="text" readonly value="${data.area || ""}">
+                    </div>
 
-            <div class="field">
-                <label>SOLICITANTE</label>
-                <input id="solicitante_${tabId}" class="readonly" type="text" readonly value="${data.solicitante || ""}">
-            </div>
+                    <div class="field">
+                        <label>SOLICITANTE</label>
+                        <input id="solicitante_${tabId}" class="readonly" type="text" readonly value="${data.solicitante || ""}">
+                    </div>
 
-            <div class="field">
-                <label>MARCA</label>
-                <input id="marca_${tabId}" class="readonly" type="text" readonly value="${data.marca || ""}">
-            </div>
+                    <div class="field">
+                        <label>MARCA</label>
+                        <input id="marca_${tabId}" class="readonly" type="text" readonly value="${data.marca || ""}">
+                    </div>
 
-            <div class="field field-full">
-                <label>DESCRICAO CAMPANHA</label>
-                <input id="descCamp_${tabId}" class="readonly" type="text" readonly value="${data.descCamp || ""}">
-            </div>
+                    <div class="field field-full">
+                        <label>DESCRICAO CAMPANHA</label>
+                        <input id="descCamp_${tabId}" class="readonly" type="text" readonly value="${data.descCamp || ""}">
+                    </div>
 
-            <div class="field field-full">
-                <label>Canais (somente > 0)</label>
-                <div id="canais_${tabId}" class="channels-wrapper"></div>
-            </div>
-            
-            <div class="field">
-                <label>Tempo Estimado</label>
-                <input id="tempo_${tabId}" class="readonly" type="text" readonly value="${data.tempo || ""}">
-            </div>
-        </div>
-
-        <h2>Divisão 3 — Dados</h2>
-        <div class="fields-grid">
-            <div class="field">
-                <label>Base</label>
-                <input id="base_${tabId}" class="readonly" type="text" readonly value="${data.base || ""}">
-            </div>
-
-            <div class="field field-full">
-                <label>Observação</label>
-                <textarea id="obs_${tabId}" class="readonly readonly-multiline" readonly>${data.observacao || ""}</textarea>
+                    <div class="field field-full">
+                        <label>Canais (somente > 0)</label>
+                        <div id="canais_${tabId}" class="channels-wrapper"></div>
+                    </div>
+                </div>
             </div>
         </div>
 
-        <h2>Divisão 5 — Push</h2>
-        <div id="push_container_${tabId}"></div>
+        <!-- Dados em accordion -->
+        <div class="accordion">
+            <div class="accordion-header" data-accordion-target="dados_${tabId}">
+                <span class="accordion-title">Dados</span>
+                <span class="accordion-arrow">▸</span>
+            </div>
+            <div id="dados_${tabId}" class="accordion-body">
+                <div class="fields-grid">
+                    <div class="field">
+                        <label>Base</label>
+                        <input id="base_${tabId}" class="readonly" type="text" readonly value="${data.base || ""}">
+                    </div>
 
-        <h2>Divisão 6 — Banners</h2>
-        <div id="banner_container_${tabId}"></div>
+                    <div class="field field-full">
+                        <label>Observação</label>
+                        <textarea id="obs_${tabId}" class="readonly readonly-multiline" readonly>${data.observacao || ""}</textarea>
+                    </div>
+                </div>
+            </div>
+        </div>
 
-        <h2>Divisão 7 — MktScreen</h2>
-        <div id="mkt_container_${tabId}"></div>
+        <!-- Push pai -->
+        <div class="accordion">
+            <div class="accordion-header" data-accordion-target="pushWrap_${tabId}">
+                <span class="accordion-title">Push</span>
+                <span class="accordion-arrow">▸</span>
+            </div>
+            <div id="pushWrap_${tabId}" class="accordion-body">
+                <div id="push_container_${tabId}"></div>
+            </div>
+        </div>
+
+        <!-- Banner pai -->
+        <div class="accordion">
+            <div class="accordion-header" data-accordion-target="bannerWrap_${tabId}">
+                <span class="accordion-title">Banners</span>
+                <span class="accordion-arrow">▸</span>
+            </div>
+            <div id="bannerWrap_${tabId}" class="accordion-body">
+                <div id="banner_container_${tabId}"></div>
+            </div>
+        </div>
+
+        <!-- MktScreen pai -->
+        <div class="accordion">
+            <div class="accordion-header" data-accordion-target="mktWrap_${tabId}">
+                <span class="accordion-title">MktScreen</span>
+                <span class="accordion-arrow">▸</span>
+            </div>
+            <div id="mktWrap_${tabId}" class="accordion-body">
+                <div id="mkt_container_${tabId}"></div>
+            </div>
+        </div>
     `;
 
     document.getElementById("content-container").appendChild(content);
 
-    // repopula canais + comunicações a partir do estado salvo
     if (data.canais) {
         renderCanais(tabId, data.canais);
     }
@@ -943,6 +1018,8 @@ function createTabFromState(tabId, data) {
     renderPushList(tabId, data.pushes || []);
     renderBannerList(tabId, data.banners || []);
     renderMktScreenView(tabId, data.mktScreen || null);
+
+    autoResizeTextareas(tabId);
 
     tabCount++;
 }
@@ -988,6 +1065,7 @@ function switchTab(tabId) {
         contentEl.style.display = "block";
     }
 
+    autoResizeTextareas(tabId);
     saveState();
 }
 
@@ -1015,19 +1093,19 @@ function processCard(tabId, texto) {
         tabTitle.textContent = titulo.nome || "Card";
     }
 
-    // Divisão 2
+    // Divisão 2 (Informações Gerais)
     setFieldValue("area_", tabId, info.area);
     setFieldValue("solicitante_", tabId, info.solicitante);
     setFieldValue("marca_", tabId, info.marca);
     setFieldValue("descCamp_", tabId, info.descCamp);
-    setFieldValue("tempo_", tabId, info.tempo);
     renderCanais(tabId, info.canais);
+    // tempo é lido mas não exibido de propósito
 
-    // Divisão 3
+    // Divisão 3 (Dados)
     setFieldValue("base_", tabId, dados.base);
     setFieldValue("obs_", tabId, dados.observacao);
 
-    // Divisão 5 / 6 / 7 — múltiplas comunicações
+    // Push / Banner / Mkt
     renderPushList(tabId, pushes);
     renderBannerList(tabId, banners);
     renderMktScreenView(tabId, mkt);
@@ -1054,6 +1132,7 @@ function processCard(tabId, texto) {
     tabData.banners     = banners;
     tabData.mktScreen   = mkt;
 
+    autoResizeTextareas(tabId);
     saveState();
 }
 
@@ -1082,6 +1161,22 @@ function closeTab(tabId) {
 
     saveState();
 }
+
+// ===================== ACCORDION HANDLER GLOBAL =====================
+
+document.addEventListener("click", (e) => {
+    const header = e.target.closest(".accordion-header");
+    if (!header) return;
+
+    const targetId = header.dataset.accordionTarget;
+    if (!targetId) return;
+
+    const body = document.getElementById(targetId);
+    if (!body) return;
+
+    const isOpen = body.classList.toggle("open");
+    header.classList.toggle("open", isOpen);
+});
 
 // ===================== INICIALIZAÇÃO =====================
 
