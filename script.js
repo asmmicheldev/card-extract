@@ -78,7 +78,7 @@ function renderCanais(tabId, canaisString) {
     });
 }
 
-// ===================== PARSERS =====================
+// ===================== PARSERS BÁSICOS =====================
 
 // ---- Divisão 1: título do card ----
 function parseTitulo(linhas) {
@@ -133,7 +133,6 @@ function parseInformacoesGerais(linhas) {
 
         for (let i = 0; i < subset.length; i++) {
             const linha = subset[i].trim();
-
             if (!linha) continue;
 
             const upper = linha.toUpperCase();
@@ -213,35 +212,41 @@ function parseDados(linhas) {
     return { base, observacao };
 }
 
-// ---- Divisão 5: Push (Comunicação 1) ----
-function parsePush(linhas) {
-    const idxComm = linhas.findIndex(l =>
-        l.includes("COMUNICAÇÃO") && l.includes("(PUSH)")
-    );
-    if (idxComm === -1) {
-        return {
-            posicaoJornada: "",
-            dataInicio: "",
-            nomeCom: "",
-            titulo: "",
-            subtitulo: "",
-            ctaType: "",
-            url: "",
-            temVar: "",
-            tipoVar: "",
-            observacao: ""
-        };
+// ===================== PARSE DE COMUNICAÇÕES =====================
+
+// Quebra o card em blocos de comunicação
+function splitCommunications(linhas) {
+    const blocks = [];
+    for (let i = 0; i < linhas.length; i++) {
+        const line = linhas[i].trim();
+        if (line.startsWith("---------- COMUNICAÇÃO")) {
+            const header = line;
+            let j = i + 1;
+            while (j < linhas.length && !linhas[j].trim().startsWith("---------- COMUNICAÇÃO")) {
+                j++;
+            }
+            const subset = linhas.slice(i + 1, j);
+
+            let numero = null;
+            let posicao = "";
+            let tipo = "";
+
+            const match = header.match(/COMUNICAÇÃO\s+(\d+)\s*-\s*([^-]+)\s*\(([^)]+)\)/i);
+            if (match) {
+                numero = parseInt(match[1], 10);
+                posicao = match[2].trim();
+                tipo = match[3].trim().toUpperCase(); // PUSH / BANNER / MKTSCREEN
+            }
+
+            blocks.push({ header, numero, posicao, tipo, lines: subset });
+            i = j - 1;
+        }
     }
+    return blocks;
+}
 
-    let end = idxComm + 1;
-    while (end < linhas.length) {
-        const t = linhas[end].trim();
-        if (t.startsWith("---------- COMUNICAÇÃO") && end > idxComm) break;
-        end++;
-    }
-
-    const subset = linhas.slice(idxComm + 1, end);
-
+// ---- Push: um bloco de comunicação (PUSH) ----
+function parsePushBlock(subset) {
     let posicaoJornada = "";
     let dataInicio = "";
     let nomeCom = "";
@@ -273,7 +278,12 @@ function parsePush(linhas) {
             url = linha.split(":").slice(1).join(":").trim();
         } else if (linha.startsWith("Tem Váriavel?")) {
             temVar = linha.replace("Tem Váriavel?", "").trim();
+        } else if (linha.startsWith("Tem Variável?")) {
+            // caso escrevam certo em algum card
+            temVar = linha.replace("Tem Variável?", "").trim();
         } else if (linha.startsWith("Tipo Váriavel:")) {
+            tipoVar = linha.split(":").slice(1).join(":").trim();
+        } else if (linha.startsWith("Tipo Variável:")) {
             tipoVar = linha.split(":").slice(1).join(":").trim();
         } else if (linha.startsWith("Observação:")) {
             observacao = linha.split(":").slice(1).join(":").trim();
@@ -294,46 +304,13 @@ function parsePush(linhas) {
     };
 }
 
-// ---- Divisão 6: Banner (Comunicação 1) ----
-function parseBanner(linhas) {
-    const idxComm = linhas.findIndex(l =>
-        l.includes("COMUNICAÇÃO") && l.includes("(BANNER)")
-    );
-    if (idxComm === -1) {
-        return {
-            tipoExibicao: "",
-            dataInicio: "",
-            dataFim: "",
-            periodoExibicao: "",
-            nomeExp: "",
-            tela: "",
-            channel: "",
-            contentZone: "",
-            template: "",
-            componentStyle: "",
-            titulo: "",
-            subtitulo: "",
-            cta: "",
-            url: "",
-            imagem: "",
-            observacao: "",
-            json: ""
-        };
-    }
-
-    let end = idxComm + 1;
-    while (end < linhas.length) {
-        const t = linhas[end].trim();
-        if (t.startsWith("---------- COMUNICAÇÃO") && end > idxComm) break;
-        end++;
-    }
-
-    const subset = linhas.slice(idxComm + 1, end);
-
+// ---- Banner: um bloco de comunicação (BANNER) ----
+function parseBannerBlock(subset) {
     let tipoExibicao = "";
     let dataInicio = "";
     let dataFim = "";
     let periodoExibicao = "";
+    let nomeCampanha = "";
     let nomeExp = "";
     let tela = "";
     let channel = "";
@@ -360,6 +337,8 @@ function parseBanner(linhas) {
             dataFim = linha.split(":")[1].trim();
         } else if (linha.startsWith("periodoExibicao:")) {
             periodoExibicao = linha.split(":")[1].trim();
+        } else if (linha.startsWith("Nome Campanha:")) {
+            nomeCampanha = linha.split(":").slice(1).join(":").trim();
         } else if (linha.startsWith("Nome Experiência:")) {
             nomeExp = linha.split(":").slice(1).join(":").trim();
         } else if (linha.startsWith("Tela:")) {
@@ -387,10 +366,7 @@ function parseBanner(linhas) {
         } else if (linha.startsWith("JSON gerado:")) {
             const jsonLines = [];
             for (let j = idx + 1; j < subset.length; j++) {
-                const l2 = subset[j];
-                const t2 = l2.trim();
-                if (t2.startsWith("---------- COMUNICAÇÃO")) break;
-                jsonLines.push(l2);
+                jsonLines.push(subset[j]);
             }
             json = jsonLines.join("\n").trim();
         }
@@ -401,6 +377,7 @@ function parseBanner(linhas) {
         dataInicio,
         dataFim,
         periodoExibicao,
+        nomeCampanha,
         nomeExp,
         tela,
         channel,
@@ -417,81 +394,427 @@ function parseBanner(linhas) {
     };
 }
 
-// ---- Divisões 7 e 8: MktScreen / Bloco 1 ----
-function parseMktScreen(linhas) {
-    const idxComm = linhas.findIndex(l =>
-        l.includes("COMUNICAÇÃO") && l.includes("(MKTSCREEN)")
-    );
-    if (idxComm === -1) {
-        return {
-            url: "",
-            blocos: "",
-            bloco1_nomeExp: "",
-            bloco1_json: ""
-        };
+// ---- MktScreen: bloco de comunicação (MKTSCREEN) ----
+
+function parseMktBloco(blocoLines) {
+    let nomeCampanha = "";
+    let nomeExp = "";
+    let template = "";
+    let titulo = "";
+    let subtitulo = "";
+    let imagem = "";
+    let json = "";
+
+    for (let i = 0; i < blocoLines.length; i++) {
+        const linha = blocoLines[i].trim();
+        if (!linha) continue;
+
+        if (linha.startsWith("Nome Campanha:")) {
+            nomeCampanha = linha.split(":").slice(1).join(":").trim();
+        } else if (linha.startsWith("Nome Experiência:")) {
+            nomeExp = linha.split(":").slice(1).join(":").trim();
+        } else if (linha.startsWith("Template:")) {
+            template = linha.split(":").slice(1).join(":").trim();
+        } else if (linha.startsWith("Titulo") || linha.startsWith("Título")) {
+            // cobre "Titulo:" e "Título........:"
+            const partes = linha.split(":");
+            partes.shift();
+            titulo = partes.join(":").trim();
+        } else if (linha.startsWith("Subtitulo") || linha.startsWith("Subtítulo")) {
+            const partes = linha.split(":");
+            partes.shift();
+            subtitulo = partes.join(":").trim();
+        } else if (linha.startsWith("Imagem:")) {
+            imagem = linha.split(":").slice(1).join(":").trim();
+        } else if (linha.startsWith("JSON do")) {
+            const jsonLines = [];
+            for (let j = i + 1; j < blocoLines.length; j++) {
+                jsonLines.push(blocoLines[j]);
+            }
+            json = jsonLines.join("\n").trim();
+            break;
+        }
     }
 
-    let end = idxComm + 1;
-    while (end < linhas.length) {
-        const t = linhas[end].trim();
-        if (t.startsWith("---------- COMUNICAÇÃO") && end > idxComm) break;
-        end++;
-    }
+    return { nomeCampanha, nomeExp, template, titulo, subtitulo, imagem, json };
+}
 
-    const subset = linhas.slice(idxComm + 1, end);
-
+function parseMktScreenBlock(subset) {
+    let posicaoJornada = "";
     let url = "";
-    let blocos = "";
+    let blocosQtd = "";
+    const blocos = [];
 
+    // posicaoJornada
+    const linhaPos = subset.find(l => l.trim().startsWith("posicaoJornada:"));
+    if (linhaPos) {
+        posicaoJornada = linhaPos.split(":")[1].trim();
+    }
+
+    // URL + Blocos
     const idxMktLine = subset.findIndex(l => l.trim() === "MktScreen");
     if (idxMktLine !== -1) {
         for (let i = idxMktLine + 1; i < subset.length; i++) {
             const linha = subset[i].trim();
             if (!linha) continue;
+
             if (linha.startsWith("URL:")) {
                 url = linha.split(":").slice(1).join(":").trim();
             } else if (linha.startsWith("Blocos:")) {
-                blocos = linha.split(":")[1].trim();
-                break;
+                blocosQtd = linha.split(":")[1].trim();
             } else if (linha.startsWith("---------- POSIÇÃO")) {
+                // a partir daqui lidamos nos loops abaixo
                 break;
             }
         }
     }
 
-    // Bloco 1
-    let bloco1_nomeExp = "";
-    let bloco1_json = "";
-
-    const idxPos = subset.findIndex(l => l.trim().startsWith("---------- POSIÇÃO"));
-    if (idxPos !== -1) {
-        let endPos = idxPos + 1;
-        while (endPos < subset.length) {
-            const t = subset[endPos].trim();
-            if (t.startsWith("---------- POSIÇÃO") && endPos > idxPos) break;
-            endPos++;
-        }
-
-        const bloco1 = subset.slice(idxPos + 1, endPos);
-
-        for (let i = 0; i < bloco1.length; i++) {
-            const linha = bloco1[i].trim();
-            if (!linha) continue;
-
-            if (linha.startsWith("Nome Experiência:")) {
-                bloco1_nomeExp = linha.split(":").slice(1).join(":").trim();
-            } else if (linha.startsWith("JSON do")) {
-                const jsonLines = [];
-                for (let j = i + 1; j < bloco1.length; j++) {
-                    jsonLines.push(bloco1[j]);
-                }
-                bloco1_json = jsonLines.join("\n").trim();
-                break;
+    // Blocos (POSIÇÃO 1, 2, 3, ...)
+    for (let i = 0; i < subset.length; i++) {
+        const line = subset[i].trim();
+        if (line.startsWith("---------- POSIÇÃO")) {
+            let numero = null;
+            const m = line.match(/POSIÇÃO\s+(\d+)/i);
+            if (m) {
+                numero = parseInt(m[1], 10);
             }
+
+            let j = i + 1;
+            while (j < subset.length && !subset[j].trim().startsWith("---------- POSIÇÃO")) {
+                j++;
+            }
+            const blocoLines = subset.slice(i + 1, j);
+            const parsed = parseMktBloco(blocoLines);
+            blocos.push({ numero, ...parsed });
+            i = j - 1;
         }
     }
 
-    return { url, blocos, bloco1_nomeExp, bloco1_json };
+    return { posicaoJornada, url, blocosQtd, blocos };
+}
+
+// Juntando tudo
+function parseCommunications(linhas) {
+    const blocks = splitCommunications(linhas);
+
+    const pushes = [];
+    const banners = [];
+    let mktScreen = null;
+
+    blocks.forEach(b => {
+        if (b.tipo === "PUSH") {
+            const parsed = parsePushBlock(b.lines);
+            pushes.push({
+                numero: b.numero,
+                posicaoHeader: b.posicao,
+                ...parsed
+            });
+        } else if (b.tipo === "BANNER") {
+            const parsed = parseBannerBlock(b.lines);
+            banners.push({
+                numero: b.numero,
+                ...parsed
+            });
+        } else if (b.tipo === "MKTSCREEN") {
+            const parsed = parseMktScreenBlock(b.lines);
+            mktScreen = {
+                numero: b.numero,
+                posicaoHeader: b.posicao,
+                ...parsed
+            };
+        }
+    });
+
+    return { pushes, banners, mktScreen };
+}
+
+// ===================== RENDER DE LISTAS (PUSH / BANNER / MKT) =====================
+
+function renderPushList(tabId, pushes) {
+    const container = document.getElementById("push_container_" + tabId);
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (!pushes || pushes.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-hint";
+        empty.textContent = "Nenhum push encontrado neste card.";
+        container.appendChild(empty);
+        return;
+    }
+
+    pushes.forEach((p, index) => {
+        const block = document.createElement("div");
+        block.className = "subsection";
+
+        const header = document.createElement("div");
+        header.className = "subsection-header";
+
+        const titleSpan = document.createElement("span");
+        titleSpan.className = "subsection-title";
+        const num = p.numero || (index + 1);
+        const pos = p.posicaoJornada || p.posicaoHeader || "";
+        titleSpan.textContent = `Push ${num} — ${pos}`;
+
+        const nomeSpan = document.createElement("span");
+        nomeSpan.className = "subsection-meta";
+        nomeSpan.textContent = p.nomeCom || "";
+
+        header.appendChild(titleSpan);
+        header.appendChild(nomeSpan);
+        block.appendChild(header);
+
+        const grid = document.createElement("div");
+        grid.className = "fields-grid";
+
+        function addField(labelText, value, full = false, isTextarea = false) {
+            const field = document.createElement("div");
+            field.className = "field";
+            if (full) field.classList.add("field-full");
+
+            const label = document.createElement("label");
+            label.textContent = labelText;
+
+            let input;
+            if (isTextarea) {
+                input = document.createElement("textarea");
+                input.className = "readonly readonly-multiline";
+            } else {
+                input = document.createElement("input");
+                input.type = "text";
+                input.className = "readonly";
+            }
+            input.readOnly = true;
+            input.value = value || "";
+
+            field.appendChild(label);
+            field.appendChild(input);
+            grid.appendChild(field);
+        }
+
+        addField("posicaoJornada", p.posicaoJornada, false);
+        addField("dataInicio", p.dataInicio, false);
+        addField("CTA Type", p.ctaType, false);
+        addField("Tem Variável?", p.temVar, false);
+        addField("Tipo Variável", p.tipoVar, false);
+        addField("Título", p.titulo, true);
+        addField("Subtítulo", p.subtitulo, true);
+        addField("URL de Redirecionamento", p.url, true);
+        addField("Observação", p.observacao, true, true);
+
+        block.appendChild(grid);
+        container.appendChild(block);
+    });
+}
+
+function renderBannerList(tabId, banners) {
+    const container = document.getElementById("banner_container_" + tabId);
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (!banners || banners.length === 0) {
+        const empty = document.createElement("div");
+        empty.className = "empty-hint";
+        empty.textContent = "Nenhum banner encontrado neste card.";
+        container.appendChild(empty);
+        return;
+    }
+
+    banners.forEach((b, index) => {
+        const block = document.createElement("div");
+        block.className = "subsection";
+
+        const header = document.createElement("div");
+        header.className = "subsection-header";
+
+        const titleSpan = document.createElement("span");
+        titleSpan.className = "subsection-title";
+        const num = b.numero || (index + 1);
+        titleSpan.textContent = `Banner ${num} — Tela ${b.tela || "N/A"}`;
+
+        const nomeSpan = document.createElement("span");
+        nomeSpan.className = "subsection-meta";
+        nomeSpan.textContent = b.nomeExp || "";
+
+        header.appendChild(titleSpan);
+        header.appendChild(nomeSpan);
+        block.appendChild(header);
+
+        const grid = document.createElement("div");
+        grid.className = "fields-grid";
+
+        function addField(labelText, value, full = false, isTextarea = false) {
+            const field = document.createElement("div");
+            field.className = "field";
+            if (full) field.classList.add("field-full");
+
+            const label = document.createElement("label");
+            label.textContent = labelText;
+
+            let input;
+            if (isTextarea) {
+                input = document.createElement("textarea");
+                input.className = "readonly readonly-multiline";
+            } else {
+                input = document.createElement("input");
+                input.type = "text";
+                input.className = "readonly";
+            }
+            input.readOnly = true;
+            input.value = value || "";
+
+            field.appendChild(label);
+            field.appendChild(input);
+            grid.appendChild(field);
+        }
+
+        addField("tipoExibicao", b.tipoExibicao, false);
+        addField("dataInicio", b.dataInicio, false);
+        addField("dataFim", b.dataFim, false);
+        addField("periodoExibicao", b.periodoExibicao, false);
+        addField("Channel", b.channel, false);
+        addField("ContentZone/CampaignPosition", b.contentZone, true);
+        addField("Template", b.template, false);
+        addField("ComponentStyle", b.componentStyle, false);
+        addField("Título", b.titulo, true);
+        addField("Subtitulo", b.subtitulo, true);
+        addField("CTA", b.cta, false);
+        addField("URL de Redirecionamento", b.url, true);
+        addField("Imagem", b.imagem, true);
+        addField("Observação", b.observacao, true, true);
+        addField("JSON gerado", b.json, true, true);
+
+        block.appendChild(grid);
+        container.appendChild(block);
+    });
+}
+
+function renderMktScreenView(tabId, mkt) {
+    const container = document.getElementById("mkt_container_" + tabId);
+    if (!container) return;
+
+    container.innerHTML = "";
+
+    if (!mkt) {
+        const empty = document.createElement("div");
+        empty.className = "empty-hint";
+        empty.textContent = "Nenhuma MktScreen encontrada neste card.";
+        container.appendChild(empty);
+        return;
+    }
+
+    // Info geral da MktScreen
+    const geral = document.createElement("div");
+    geral.className = "subsection";
+
+    const header = document.createElement("div");
+    header.className = "subsection-header";
+
+    const titleSpan = document.createElement("span");
+    titleSpan.className = "subsection-title";
+    titleSpan.textContent = `MktScreen — posicaoJornada ${mkt.posicaoJornada || mkt.posicaoHeader || ""}`;
+
+    const metaSpan = document.createElement("span");
+    metaSpan.className = "subsection-meta";
+    metaSpan.textContent = `Blocos: ${mkt.blocosQtd || (mkt.blocos ? mkt.blocos.length : 0)}`;
+
+    header.appendChild(titleSpan);
+    header.appendChild(metaSpan);
+    geral.appendChild(header);
+
+    const grid = document.createElement("div");
+    grid.className = "fields-grid";
+
+    function addField(labelText, value, full = false, isTextarea = false) {
+        const field = document.createElement("div");
+        field.className = "field";
+        if (full) field.classList.add("field-full");
+
+        const label = document.createElement("label");
+        label.textContent = labelText;
+
+        let input;
+        if (isTextarea) {
+            input = document.createElement("textarea");
+            input.className = "readonly readonly-multiline";
+        } else {
+            input = document.createElement("input");
+            input.type = "text";
+            input.className = "readonly";
+        }
+        input.readOnly = true;
+        input.value = value || "";
+
+        field.appendChild(label);
+        field.appendChild(input);
+        grid.appendChild(field);
+    }
+
+    addField("URL MktScreen", mkt.url, true);
+    geral.appendChild(grid);
+    container.appendChild(geral);
+
+    // Blocos
+    if (mkt.blocos && mkt.blocos.length > 0) {
+        mkt.blocos.forEach(b => {
+            const block = document.createElement("div");
+            block.className = "subsection";
+
+            const h = document.createElement("div");
+            h.className = "subsection-header";
+
+            const t = document.createElement("span");
+            t.className = "subsection-title";
+            t.textContent = `Bloco ${b.numero || ""} — ${b.template || ""}`;
+
+            const meta = document.createElement("span");
+            meta.className = "subsection-meta";
+            meta.textContent = b.nomeExp || "";
+
+            h.appendChild(t);
+            h.appendChild(meta);
+            block.appendChild(h);
+
+            const g = document.createElement("div");
+            g.className = "fields-grid";
+
+            addFieldLike(g, "Nome Campanha", b.nomeCampanha, true, false);
+            addFieldLike(g, "Título", b.titulo, true, false);
+            addFieldLike(g, "Subtítulo", b.subtitulo, true, false);
+            addFieldLike(g, "Imagem", b.imagem, true, false);
+            addFieldLike(g, "JSON do bloco", b.json, true, true);
+
+            block.appendChild(g);
+            container.appendChild(block);
+        });
+    }
+
+    function addFieldLike(gridEl, labelText, value, full = false, isTextarea = false) {
+        const field = document.createElement("div");
+        field.className = "field";
+        if (full) field.classList.add("field-full");
+
+        const label = document.createElement("label");
+        label.textContent = labelText;
+
+        let input;
+        if (isTextarea) {
+            input = document.createElement("textarea");
+            input.className = "readonly readonly-multiline";
+        } else {
+            input = document.createElement("input");
+            input.type = "text";
+            input.className = "readonly";
+        }
+        input.readOnly = true;
+        input.value = value || "";
+
+        field.appendChild(label);
+        field.appendChild(input);
+        gridEl.appendChild(field);
+    }
 }
 
 // ===================== UI: CRIAÇÃO DE ABAS =====================
@@ -533,251 +856,93 @@ function createTabFromState(tabId, data) {
     content.className = "section";
     content.id = "content_" + tabId;
 
-    // IMPORTANTE: para campos que podem ter ${} (JSON), deixo vazio e seto via JS depois.
     content.innerHTML = `
         <h2>Entrada do Card</h2>
-        <div class="field">
+        <div class="field field-full">
             <label>Cole aqui o card completo:</label>
-            <textarea class="input" rows="6"
+            <textarea class="input readonly-multiline"
                     oninput="processCard('${tabId}', this.value)">${data.input || ""}</textarea>
         </div>
 
         <h2>Divisão 1 — Título do Card</h2>
-        <div class="field">
-            <label>Nome do Card / Jornada</label>
-            <input id="nome_${tabId}" class="readonly" type="text" readonly value="${data.nome || ""}">
-        </div>
+        <div class="fields-grid">
+            <div class="field">
+                <label>Nome do Card / Jornada</label>
+                <input id="nome_${tabId}" class="readonly" type="text" readonly value="${data.nome || ""}">
+            </div>
 
-        <div class="field">
-            <label>Descrição do Card</label>
-            <input id="desc_${tabId}" class="readonly" type="text" readonly value="${data.descricao || ""}">
+            <div class="field">
+                <label>Descrição do Card</label>
+                <input id="desc_${tabId}" class="readonly" type="text" readonly value="${data.descricao || ""}">
+            </div>
         </div>
 
         <h2>Divisão 2 — Informações Gerais</h2>
+        <div class="fields-grid">
+            <div class="field">
+                <label>AREA</label>
+                <input id="area_${tabId}" class="readonly" type="text" readonly value="${data.area || ""}">
+            </div>
 
-        <div class="field">
-            <label>AREA</label>
-            <input id="area_${tabId}" class="readonly" type="text" readonly value="${data.area || ""}">
-        </div>
+            <div class="field">
+                <label>SOLICITANTE</label>
+                <input id="solicitante_${tabId}" class="readonly" type="text" readonly value="${data.solicitante || ""}">
+            </div>
 
-        <div class="field">
-            <label>SOLICITANTE</label>
-            <input id="solicitante_${tabId}" class="readonly" type="text" readonly value="${data.solicitante || ""}">
-        </div>
+            <div class="field">
+                <label>MARCA</label>
+                <input id="marca_${tabId}" class="readonly" type="text" readonly value="${data.marca || ""}">
+            </div>
 
-        <div class="field">
-            <label>MARCA</label>
-            <input id="marca_${tabId}" class="readonly" type="text" readonly value="${data.marca || ""}">
-        </div>
+            <div class="field field-full">
+                <label>DESCRICAO CAMPANHA</label>
+                <input id="descCamp_${tabId}" class="readonly" type="text" readonly value="${data.descCamp || ""}">
+            </div>
 
-        <div class="field">
-            <label>DESCRICAO CAMPANHA</label>
-            <input id="descCamp_${tabId}" class="readonly" type="text" readonly value="${data.descCamp || ""}">
-        </div>
-
-        <div class="field">
-            <label>Canais (somente > 0)</label>
-            <div id="canais_${tabId}" class="channels-wrapper"></div>
-        </div>
-        
-        <div class="field">
-            <label>Tempo Estimado</label>
-            <input id="tempo_${tabId}" class="readonly" type="text" readonly value="${data.tempo || ""}">
+            <div class="field field-full">
+                <label>Canais (somente > 0)</label>
+                <div id="canais_${tabId}" class="channels-wrapper"></div>
+            </div>
+            
+            <div class="field">
+                <label>Tempo Estimado</label>
+                <input id="tempo_${tabId}" class="readonly" type="text" readonly value="${data.tempo || ""}">
+            </div>
         </div>
 
         <h2>Divisão 3 — Dados</h2>
+        <div class="fields-grid">
+            <div class="field">
+                <label>Base</label>
+                <input id="base_${tabId}" class="readonly" type="text" readonly value="${data.base || ""}">
+            </div>
 
-        <div class="field">
-            <label>Base</label>
-            <input id="base_${tabId}" class="readonly" type="text" readonly value="${data.base || ""}">
+            <div class="field field-full">
+                <label>Observação</label>
+                <textarea id="obs_${tabId}" class="readonly readonly-multiline" readonly>${data.observacao || ""}</textarea>
+            </div>
         </div>
 
-        <div class="field">
-            <label>Observação</label>
-            <textarea id="obs_${tabId}" class="readonly readonly-multiline" readonly>${data.observacao || ""}</textarea>
-        </div>
+        <h2>Divisão 5 — Push</h2>
+        <div id="push_container_${tabId}"></div>
 
-        <h2>Divisão 5 — Push (Comunicação 1)</h2>
-
-        <div class="field">
-            <label>posicaoJornada</label>
-            <input id="push_posicao_${tabId}" class="readonly" type="text" readonly value="${data.push_posicao || ""}">
-        </div>
-
-        <div class="field">
-            <label>dataInicio</label>
-            <input id="push_dataInicio_${tabId}" class="readonly" type="text" readonly value="${data.push_dataInicio || ""}">
-        </div>
-
-        <div class="field">
-            <label>Nome Comunicação</label>
-            <input id="push_nome_${tabId}" class="readonly" type="text" readonly value="${data.push_nome || ""}">
-        </div>
-
-        <div class="field">
-            <label>Título</label>
-            <input id="push_titulo_${tabId}" class="readonly" type="text" readonly value="${data.push_titulo || ""}">
-        </div>
-
-        <div class="field">
-            <label>Subtítulo</label>
-            <input id="push_subtitulo_${tabId}" class="readonly" type="text" readonly value="${data.push_subtitulo || ""}">
-        </div>
-
-        <div class="field">
-            <label>CTA Type</label>
-            <input id="push_ctaType_${tabId}" class="readonly" type="text" readonly value="${data.push_ctaType || ""}">
-        </div>
-
-        <div class="field">
-            <label>URL de Redirecionamento</label>
-            <input id="push_url_${tabId}" class="readonly" type="text" readonly value="${data.push_url || ""}">
-        </div>
-
-        <div class="field">
-            <label>Tem Variável?</label>
-            <input id="push_temVar_${tabId}" class="readonly" type="text" readonly value="${data.push_temVar || ""}">
-        </div>
-
-        <div class="field">
-            <label>Tipo Variável</label>
-            <input id="push_tipoVar_${tabId}" class="readonly" type="text" readonly value="${data.push_tipoVar || ""}">
-        </div>
-
-        <div class="field">
-            <label>Observação (Push)</label>
-            <textarea id="push_obs_${tabId}" class="readonly readonly-multiline" readonly>${data.push_obs || ""}</textarea>
-        </div>
-
-        <h2>Divisão 6 — Banner (Comunicação 1)</h2>
-
-        <div class="field">
-            <label>tipoExibicao</label>
-            <input id="banner_tipoExibicao_${tabId}" class="readonly" type="text" readonly value="${data.banner_tipoExibicao || ""}">
-        </div>
-
-        <div class="field">
-            <label>dataInicio</label>
-            <input id="banner_dataInicio_${tabId}" class="readonly" type="text" readonly value="${data.banner_dataInicio || ""}">
-        </div>
-
-        <div class="field">
-            <label>dataFim</label>
-            <input id="banner_dataFim_${tabId}" class="readonly" type="text" readonly value="${data.banner_dataFim || ""}">
-        </div>
-
-        <div class="field">
-            <label>periodoExibicao</label>
-            <input id="banner_periodoExibicao_${tabId}" class="readonly" type="text" readonly value="${data.banner_periodoExibicao || ""}">
-        </div>
-
-        <div class="field">
-            <label>Nome Experiência</label>
-            <input id="banner_nomeExp_${tabId}" class="readonly" type="text" readonly value="${data.banner_nomeExp || ""}">
-        </div>
-
-        <div class="field">
-            <label>Tela</label>
-            <input id="banner_tela_${tabId}" class="readonly" type="text" readonly value="${data.banner_tela || ""}">
-        </div>
-
-        <div class="field">
-            <label>Channel</label>
-            <input id="banner_channel_${tabId}" class="readonly" type="text" readonly value="${data.banner_channel || ""}">
-        </div>
-
-        <div class="field">
-            <label>ContentZone/CampaignPosition</label>
-            <input id="banner_contentZone_${tabId}" class="readonly" type="text" readonly value="${data.banner_contentZone || ""}">
-        </div>
-
-        <div class="field">
-            <label>Template</label>
-            <input id="banner_template_${tabId}" class="readonly" type="text" readonly value="${data.banner_template || ""}">
-        </div>
-
-        <div class="field">
-            <label>ComponentStyle</label>
-            <input id="banner_componentStyle_${tabId}" class="readonly" type="text" readonly value="${data.banner_componentStyle || ""}">
-        </div>
-
-        <div class="field">
-            <label>Título</label>
-            <input id="banner_titulo_${tabId}" class="readonly" type="text" readonly value="${data.banner_titulo || ""}">
-        </div>
-
-        <div class="field">
-            <label>Subtitulo</label>
-            <input id="banner_subtitulo_${tabId}" class="readonly" type="text" readonly value="${data.banner_subtitulo || ""}">
-        </div>
-
-        <div class="field">
-            <label>CTA</label>
-            <input id="banner_cta_${tabId}" class="readonly" type="text" readonly value="${data.banner_cta || ""}">
-        </div>
-
-        <div class="field">
-            <label>URL de Redirecionamento</label>
-            <input id="banner_url_${tabId}" class="readonly" type="text" readonly value="${data.banner_url || ""}">
-        </div>
-
-        <div class="field">
-            <label>Imagem</label>
-            <input id="banner_imagem_${tabId}" class="readonly" type="text" readonly value="${data.banner_imagem || ""}">
-        </div>
-
-        <div class="field">
-            <label>Observação (Banner)</label>
-            <textarea id="banner_obs_${tabId}" class="readonly readonly-multiline" readonly>${data.banner_obs || ""}</textarea>
-        </div>
-
-        <div class="field">
-            <label>JSON gerado (Banner)</label>
-            <textarea id="banner_json_${tabId}" class="readonly readonly-multiline" readonly></textarea>
-        </div>
+        <h2>Divisão 6 — Banners</h2>
+        <div id="banner_container_${tabId}"></div>
 
         <h2>Divisão 7 — MktScreen</h2>
-
-        <div class="field">
-            <label>URL MktScreen</label>
-            <input id="mkt_url_${tabId}" class="readonly" type="text" readonly value="${data.mkt_url || ""}">
-        </div>
-
-        <div class="field">
-            <label>Blocos</label>
-            <input id="mkt_blocos_${tabId}" class="readonly" type="text" readonly value="${data.mkt_blocos || ""}">
-        </div>
-
-        <h2>Divisão 8 — Bloco 1 da MktScreen</h2>
-
-        <div class="field">
-            <label>Nome Experiência (Bloco 1)</label>
-            <input id="mkt1_nomeExp_${tabId}" class="readonly" type="text" readonly value="${data.mkt1_nomeExp || ""}">
-        </div>
-
-        <div class="field">
-            <label>JSON do Bloco 1</label>
-            <textarea id="mkt1_json_${tabId}" class="readonly readonly-multiline" readonly></textarea>
-        </div>
+        <div id="mkt_container_${tabId}"></div>
     `;
 
     document.getElementById("content-container").appendChild(content);
 
-    // repopula canais
+    // repopula canais + comunicações a partir do estado salvo
     if (data.canais) {
         renderCanais(tabId, data.canais);
     }
 
-    // JSONs (não podem ir dentro do template literal por causa de ${...})
-    const bannerJsonEl = document.getElementById(`banner_json_${tabId}`);
-    if (bannerJsonEl) {
-        bannerJsonEl.value = data.banner_json || "";
-    }
-
-    const mkt1JsonEl = document.getElementById(`mkt1_json_${tabId}`);
-    if (mkt1JsonEl) {
-        mkt1JsonEl.value = data.mkt1_json || "";
-    }
+    renderPushList(tabId, data.pushes || []);
+    renderBannerList(tabId, data.banners || []);
+    renderMktScreenView(tabId, data.mktScreen || null);
 
     tabCount++;
 }
@@ -799,40 +964,9 @@ function createTab() {
         tempo: "",
         base: "",
         observacao: "",
-        // push
-        push_posicao: "",
-        push_dataInicio: "",
-        push_nome: "",
-        push_titulo: "",
-        push_subtitulo: "",
-        push_ctaType: "",
-        push_url: "",
-        push_temVar: "",
-        push_tipoVar: "",
-        push_obs: "",
-        // banner
-        banner_tipoExibicao: "",
-        banner_dataInicio: "",
-        banner_dataFim: "",
-        banner_periodoExibicao: "",
-        banner_nomeExp: "",
-        banner_tela: "",
-        banner_channel: "",
-        banner_contentZone: "",
-        banner_template: "",
-        banner_componentStyle: "",
-        banner_titulo: "",
-        banner_subtitulo: "",
-        banner_cta: "",
-        banner_url: "",
-        banner_imagem: "",
-        banner_obs: "",
-        banner_json: "",
-        // mkt screen
-        mkt_url: "",
-        mkt_blocos: "",
-        mkt1_nomeExp: "",
-        mkt1_json: ""
+        pushes: [],
+        banners: [],
+        mktScreen: null
     };
 
     createTabFromState(tabId, tabsState.tabs[tabId]);
@@ -866,9 +1000,11 @@ function processCard(tabId, texto) {
     const titulo = parseTitulo(linhas);
     const info = parseInformacoesGerais(linhas);
     const dados = parseDados(linhas);
-    const push = parsePush(linhas);
-    const banner = parseBanner(linhas);
-    const mkt = parseMktScreen(linhas);
+    const comm = parseCommunications(linhas);
+
+    const pushes = comm.pushes;
+    const banners = comm.banners;
+    const mkt = comm.mktScreen;
 
     // Divisão 1
     setFieldValue("nome_", tabId, titulo.nome);
@@ -891,51 +1027,10 @@ function processCard(tabId, texto) {
     setFieldValue("base_", tabId, dados.base);
     setFieldValue("obs_", tabId, dados.observacao);
 
-    // Divisão 5 — Push
-    setFieldValue("push_posicao_", tabId, push.posicaoJornada);
-    setFieldValue("push_dataInicio_", tabId, push.dataInicio);
-    setFieldValue("push_nome_", tabId, push.nomeCom);
-    setFieldValue("push_titulo_", tabId, push.titulo);
-    setFieldValue("push_subtitulo_", tabId, push.subtitulo);
-    setFieldValue("push_ctaType_", tabId, push.ctaType);
-    setFieldValue("push_url_", tabId, push.url);
-    setFieldValue("push_temVar_", tabId, push.temVar);
-    setFieldValue("push_tipoVar_", tabId, push.tipoVar);
-    setFieldValue("push_obs_", tabId, push.observacao);
-
-    // Divisão 6 — Banner
-    setFieldValue("banner_tipoExibicao_", tabId, banner.tipoExibicao);
-    setFieldValue("banner_dataInicio_", tabId, banner.dataInicio);
-    setFieldValue("banner_dataFim_", tabId, banner.dataFim);
-    setFieldValue("banner_periodoExibicao_", tabId, banner.periodoExibicao);
-    setFieldValue("banner_nomeExp_", tabId, banner.nomeExp);
-    setFieldValue("banner_tela_", tabId, banner.tela);
-    setFieldValue("banner_channel_", tabId, banner.channel);
-    setFieldValue("banner_contentZone_", tabId, banner.contentZone);
-    setFieldValue("banner_template_", tabId, banner.template);
-    setFieldValue("banner_componentStyle_", tabId, banner.componentStyle);
-    setFieldValue("banner_titulo_", tabId, banner.titulo);
-    setFieldValue("banner_subtitulo_", tabId, banner.subtitulo);
-    setFieldValue("banner_cta_", tabId, banner.cta);
-    setFieldValue("banner_url_", tabId, banner.url);
-    setFieldValue("banner_imagem_", tabId, banner.imagem);
-    setFieldValue("banner_obs_", tabId, banner.observacao);
-
-    const bannerJsonEl = document.getElementById(`banner_json_${tabId}`);
-    if (bannerJsonEl) {
-        bannerJsonEl.value = banner.json || "";
-    }
-
-    // Divisão 7 — MktScreen
-    setFieldValue("mkt_url_", tabId, mkt.url);
-    setFieldValue("mkt_blocos_", tabId, mkt.blocos);
-
-    // Divisão 8 — Bloco 1
-    setFieldValue("mkt1_nomeExp_", tabId, mkt.bloco1_nomeExp);
-    const mkt1JsonEl = document.getElementById(`mkt1_json_${tabId}`);
-    if (mkt1JsonEl) {
-        mkt1JsonEl.value = mkt.bloco1_json || "";
-    }
+    // Divisão 5 / 6 / 7 — múltiplas comunicações
+    renderPushList(tabId, pushes);
+    renderBannerList(tabId, banners);
+    renderMktScreenView(tabId, mkt);
 
     // Atualiza estado
     const tabData = tabsState.tabs[tabId];
@@ -955,39 +1050,9 @@ function processCard(tabId, texto) {
     tabData.base        = dados.base;
     tabData.observacao  = dados.observacao;
 
-    tabData.push_posicao     = push.posicaoJornada;
-    tabData.push_dataInicio  = push.dataInicio;
-    tabData.push_nome        = push.nomeCom;
-    tabData.push_titulo      = push.titulo;
-    tabData.push_subtitulo   = push.subtitulo;
-    tabData.push_ctaType     = push.ctaType;
-    tabData.push_url         = push.url;
-    tabData.push_temVar      = push.temVar;
-    tabData.push_tipoVar     = push.tipoVar;
-    tabData.push_obs         = push.observacao;
-
-    tabData.banner_tipoExibicao   = banner.tipoExibicao;
-    tabData.banner_dataInicio     = banner.dataInicio;
-    tabData.banner_dataFim        = banner.dataFim;
-    tabData.banner_periodoExibicao= banner.periodoExibicao;
-    tabData.banner_nomeExp        = banner.nomeExp;
-    tabData.banner_tela           = banner.tela;
-    tabData.banner_channel        = banner.channel;
-    tabData.banner_contentZone    = banner.contentZone;
-    tabData.banner_template       = banner.template;
-    tabData.banner_componentStyle = banner.componentStyle;
-    tabData.banner_titulo         = banner.titulo;
-    tabData.banner_subtitulo      = banner.subtitulo;
-    tabData.banner_cta            = banner.cta;
-    tabData.banner_url            = banner.url;
-    tabData.banner_imagem         = banner.imagem;
-    tabData.banner_obs            = banner.observacao;
-    tabData.banner_json           = banner.json;
-
-    tabData.mkt_url        = mkt.url;
-    tabData.mkt_blocos     = mkt.blocos;
-    tabData.mkt1_nomeExp   = mkt.bloco1_nomeExp;
-    tabData.mkt1_json      = mkt.bloco1_json;
+    tabData.pushes      = pushes;
+    tabData.banners     = banners;
+    tabData.mktScreen   = mkt;
 
     saveState();
 }
