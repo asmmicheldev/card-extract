@@ -109,3 +109,33 @@ body {
     border: 1px solid #333;
     padding: 6px 14px;
 }
+
+.readonly-multiline {
+    min-height: 120px;
+    resize: vertical;  /* se quiser poder aumentar a área */
+    white-space: pre-wrap; /* mantém quebras de linha bonitinhas */
+}
+
+.channels-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+/* reaproveita visual de readonly, mas em “pílulas” menores */
+.channel-input {
+    max-width: 220px;
+    cursor: default;
+}
+
+.channels-wrapper {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+}
+
+.channel-field {
+    display: flex;
+    flex-direction: column;
+    min-width: 140px;
+}
