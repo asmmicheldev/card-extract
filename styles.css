@@ -1,32 +1,33 @@
-/* ======== DARK MODE REAL ======== */
+/* === DARK MODE REAL === */
 
-/* Fundo geral da página */
 body {
     font-family: Arial, sans-serif;
-    margin: 30px;
-    background: #0f0f0f;     /* preto suave */
-    color: #e6e6e6;          /* texto cinza claro */
+    margin: 0;
+    background: #0a0a0a;
+    color: #e5e5e5;
 }
 
-/* Caixas de seção */
-.section {
-    background: #1a1a1a;     /* fundo de cartão escuro */
+/* Corrige margens do container */
+.content-container {
     padding: 20px;
-    border-radius: 10px;
+}
+
+/* Seções (caixas) */
+.section {
+    background: #1a1a1a;
+    padding: 20px;
+    border-radius: 8px;
     margin-bottom: 20px;
-    border: 1px solid #2a2a2a;   /* borda leve */
-    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+    border: 1px solid #2e2e2e;
+    box-shadow: 0 0 8px rgba(0,0,0,0.4);
 }
 
-/* Campos */
-.field {
-    margin-bottom: 15px;
-}
-
+/* Labels */
 .field label {
+    display: block;
+    margin-bottom: 6px;
     font-weight: bold;
-    color: #d0d0d0;
-    margin-bottom: 5px;
+    color: #cccccc;
 }
 
 /* Inputs */
@@ -35,33 +36,51 @@ body {
     padding: 10px;
     border-radius: 6px;
     font-size: 14px;
-    color: #f0f0f0;         /* texto sempre claro */
-}
-
-/* Input normal */
-.input {
-    border: 1px solid #444;
-    background: #2b2b2b;    /* cinza bem escuro */
+    border: 1px solid #333;
+    background: #111;
+    color: #f0f0f0;
 }
 
 /* Readonly */
 .readonly {
-    background: #1f1f1f;
-    border: 1px solid #3a3a3a;
+    background: #151515;
+    border-color: #444;
 }
 
-/* Botão */
-button {
-    padding: 10px 15px;
-    font-size: 15px;
+/* Tabs */
+.tabs-container {
+    display: flex;
+    align-items: center;
+    background: #000;
+    padding: 6px 12px;
+    gap: 6px;
+    border-bottom: 1px solid #222;
+}
+
+.tab {
+    padding: 8px 14px;
+    background: #222;
+    color: #bbb;
+    border-radius: 6px 6px 0 0;
     cursor: pointer;
-    border: none;
-    border-radius: 6px;
-    background: #3b82f6;     /* azul moderno */
-    color: white;
-    font-weight: bold;
+    border: 1px solid #333;
+    transition: background 0.25s ease;
 }
 
-button:hover {
-    background: #1e40af;
+.tab:hover {
+    background: #333;
+    color: #fff;
+}
+
+.tab.active {
+    background: #3b82f6;
+    color: #fff;
+    border-color: #3b82f6;
+}
+
+.add-tab {
+    background: #111;
+    color: #fff;
+    border: 1px solid #333;
+    padding: 6px 14px;
 }
