@@ -1,0 +1,67 @@
+/* ======== DARK MODE REAL ======== */
+
+/* Fundo geral da página */
+body {
+    font-family: Arial, sans-serif;
+    margin: 30px;
+    background: #0f0f0f;     /* preto suave */
+    color: #e6e6e6;          /* texto cinza claro */
+}
+
+/* Caixas de seção */
+.section {
+    background: #1a1a1a;     /* fundo de cartão escuro */
+    padding: 20px;
+    border-radius: 10px;
+    margin-bottom: 20px;
+    border: 1px solid #2a2a2a;   /* borda leve */
+    box-shadow: 0 0 10px rgba(0,0,0,0.5);
+}
+
+/* Campos */
+.field {
+    margin-bottom: 15px;
+}
+
+.field label {
+    font-weight: bold;
+    color: #d0d0d0;
+    margin-bottom: 5px;
+}
+
+/* Inputs */
+.input, .readonly {
+    width: 100%;
+    padding: 10px;
+    border-radius: 6px;
+    font-size: 14px;
+    color: #f0f0f0;         /* texto sempre claro */
+}
+
+/* Input normal */
+.input {
+    border: 1px solid #444;
+    background: #2b2b2b;    /* cinza bem escuro */
+}
+
+/* Readonly */
+.readonly {
+    background: #1f1f1f;
+    border: 1px solid #3a3a3a;
+}
+
+/* Botão */
+button {
+    padding: 10px 15px;
+    font-size: 15px;
+    cursor: pointer;
+    border: none;
+    border-radius: 6px;
+    background: #3b82f6;     /* azul moderno */
+    color: white;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #1e40af;
+}

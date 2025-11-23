@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <title>Card Extract</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<div class="section">
+    <h2>Entrada do Card</h2>
+
+    <div class="field">
+        <label>Cole aqui o título completo do card:</label>
+        <input id="inputCard" class="input" type="text"
+               placeholder="Ex: XP - INV_B2B-001_BLACKFRIDAY... - Black friday B2B - Renda Fixa"
+               oninput="processar()">
+    </div>
+
+</div>
+
+<div class="section">
+    <h2>Resultado (Divisão 1)</h2>
+
+    <div class="field">
+        <label>Nome do Card / Jornada</label>
+        <input id="nomeCard" class="readonly" type="text" readonly>
+    </div>
+
+    <div class="field">
+        <label>Descrição do Card</label>
+        <input id="descricaoCard" class="readonly" type="text" readonly>
+    </div>
+</div>
+
+<script src="script.js"></script>
+
+</body>
+</html>
