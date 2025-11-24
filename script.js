@@ -1535,20 +1535,30 @@ function createTabFromState(tabId, data) {
     content.id = "content_" + tabId;
 
     content.innerHTML = `
-        <h2>Card Input</h2>
+            <h2>Card Input</h2>
+            <div class="field field-full">
+                <textarea class="card-input"
+                        rows="1"
+                        oninput="processCard('${tabId}', this.value)"
+                        onpaste="handlePaste(event)">${data.input || ""}</textarea>
+            </div>
+
+        <h2>Anotações</h2>
         <div class="field field-full">
-            <textarea class="card-input"
-                    rows="1"
-                    oninput="processCard('${tabId}', this.value)"
-                    onpaste="handlePaste(event)">${data.input || ""}</textarea>
+            <textarea
+                id="notes_${tabId}"
+                class="readonly-multiline notes-input"
+                rows="5"
+                placeholder="Use este espaço para anotar pendências, combinados com o solicitante, links faltando, etc."
+                oninput="handleNotesChange('${tabId}', this.value)">${data.anotacoes || ""}</textarea>
         </div>
 
-        <h2>Informações Gerais</h2>
+            <h2>Informações Gerais</h2>
 
-        <div class="info-group">
-            <div class="info-row">
-                <span class="info-label">Canais:</span>
-                <span id="canaisText_${tabId}" class="info-value"></span>
+            <div class="info-group">
+                <div class="info-row">
+                    <span class="info-label">Canais:</span>
+                    <span id="canaisText_${tabId}" class="info-value"></span>
 
                 <span class="info-label" style="margin-left:12px;">SOLICITANTE:</span>
                 <span id="solicitanteText_${tabId}" class="info-value">${data.solicitante || ""}</span>
@@ -1645,6 +1655,7 @@ function createTab() {
         tempo: "",
         base: "",
         observacao: "",
+        anotacoes: "",
         pushes: [],
         banners: [],
         mktScreen: null
@@ -1746,6 +1757,13 @@ function processCard(tabId, texto) {
     renderMktScreenView(tabId, mkt);
 
     autoResizeTextareas(tabId);
+    saveState();
+}
+
+function handleNotesChange(tabId, value) {
+    const tabData = tabsState.tabs[tabId] || {};
+    tabData.anotacoes = value;
+    tabsState.tabs[tabId] = tabData;
     saveState();
 }
 

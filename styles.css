@@ -404,3 +404,9 @@ button {
 .image-preview-block {
     margin-bottom: 10px;  /* cria espaço antes do "JSON gerado" */
 }
+
+.notes-input {
+    width: 100%;
+    resize: vertical;      /* se quiser permitir aumentar/diminuir */
+    min-height: 60px;      /* garante um tamanho confortável */
+}
