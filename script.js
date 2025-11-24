@@ -1,11 +1,17 @@
 // ===================== ESTADO / STORAGE =====================
 
+// ==== CONFIG OCR ====
+const OCR_API_KEY = "K81669629288957"; // troque pela sua key real
+
+// ===================== ESTADO / STORAGE =====================
 let tabsState = {
     tabs: {},
-    activeTab: null
+    activeTab: null,
+    ocrCache: {}    // cache de OCR por URL de imagem
 };
 
 let tabCount = 0;
+
 
 function saveState() {
     localStorage.setItem("cardExtractData", JSON.stringify(tabsState));
@@ -16,11 +22,16 @@ function loadState() {
     if (saved) {
         tabsState = JSON.parse(saved);
 
-        const ids = Object.keys(tabsState.tabs)
+        const ids = Object.keys(tabsState.tabs || {})
             .map(id => parseInt(id.replace("tab_", "")))
             .filter(n => !isNaN(n));
 
         tabCount = ids.length > 0 ? Math.max(...ids) : 0;
+
+        // garante que ocrCache exista
+        if (!tabsState.ocrCache) {
+            tabsState.ocrCache = {};
+        }
     }
 }
 
@@ -336,9 +347,9 @@ function parseBannerBlock(subset) {
         if (linha.startsWith("tipoExibicao:")) {
             tipoExibicao = linha.split(":")[1].trim();
         } else if (linha.startsWith("dataInicio:")) {
-            dataInicio = linha.split(":")[1].trim();
+            dataInicio = linha.split(":").slice(1).join(":").trim();
         } else if (linha.startsWith("dataFim:")) {
-            dataFim = linha.split(":")[1].trim();
+            dataFim = linha.split(":").slice(1).join(":").trim();
         } else if (linha.startsWith("periodoExibicao:")) {
             periodoExibicao = linha.split(":")[1].trim();
         } else if (linha.startsWith("Nome Campanha:")) {
@@ -447,6 +458,7 @@ function parseMktScreenBlock(subset) {
     let url = "";
     let blocosQtd = "";
     let nomeExpMacro = "";
+    let channel = "";
     const blocos = [];
 
     // Nome Experiência macro (pega o primeiro que aparecer)
@@ -471,6 +483,11 @@ function parseMktScreenBlock(subset) {
 
             if (linha.startsWith("URL:")) {
                 url = linha.split(":").slice(1).join(":").trim();
+
+                const m = url.match(/[?&]channel=([^&]+)/);
+                if (m) {
+                    channel = decodeURIComponent(m[1]);
+                }
             } else if (linha.startsWith("Blocos:")) {
                 blocosQtd = linha.split(":")[1].trim();
             } else if (linha.startsWith("---------- POSIÇÃO")) {
@@ -499,7 +516,7 @@ function parseMktScreenBlock(subset) {
         }
     }
 
-    return { posicaoJornada, url, blocosQtd, nomeExpMacro, blocos };
+        return { posicaoJornada, url, blocosQtd, nomeExpMacro, channel, blocos };
 }
 
 // Juntando tudo
@@ -537,7 +554,7 @@ function parseCommunications(linhas) {
     return { pushes, banners, mktScreen };
 }
 
-// ===================== RENDER DE LISTAS (PUSH / BANNER / MKT) =====================
+// ===================== RENDER DE LISTAS (PUSH) =====================
 
 function renderPushList(tabId, pushes) {
     const container = document.getElementById("push_container_" + tabId);
@@ -552,6 +569,9 @@ function renderPushList(tabId, pushes) {
         container.appendChild(empty);
         return;
     }
+
+    // vamos usar a data do push anterior para calcular o "wait X dias"
+    let lastDate = null;
 
     pushes.forEach((p, index) => {
         const item = document.createElement("div");
@@ -580,6 +600,78 @@ function renderPushList(tabId, pushes) {
         const block = document.createElement("div");
         block.className = "subsection";
 
+        // ====== META NO TOPO (Data de Início, CTA, Obs) ======
+        let decoratedDate = "";
+        if (p.dataInicio) {
+            const current = new Date(p.dataInicio.trim());
+            if (!isNaN(current.getTime())) {
+                if (!lastDate) {
+                    // primeiro push
+                    decoratedDate = `${p.dataInicio} (inicial)`;
+                } else {
+                    const diffMs = current.getTime() - lastDate.getTime();
+                    const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
+                    if (diffDays > 0) {
+                        decoratedDate = `${p.dataInicio} (wait ${diffDays} dia${diffDays > 1 ? "s" : ""})`;
+                    } else {
+                        decoratedDate = p.dataInicio;
+                    }
+                }
+                lastDate = current;
+            } else {
+                // se a data não parsear, mostra cru
+                decoratedDate = p.dataInicio;
+            }
+        }
+
+        const hasMeta = decoratedDate || p.ctaType || p.observacao !== undefined;
+        if (hasMeta) {
+            const metaGroup = document.createElement("div");
+            metaGroup.className = "info-group";
+
+            const row = document.createElement("div");
+            row.className = "info-row";
+
+            if (decoratedDate) {
+                const lbl = document.createElement("span");
+                lbl.className = "info-label";
+                lbl.textContent = "Data de Início:";
+                const val = document.createElement("span");
+                val.className = "info-value";
+                val.textContent = decoratedDate;
+                row.appendChild(lbl);
+                row.appendChild(val);
+            }
+
+            if (p.ctaType) {
+                const lbl = document.createElement("span");
+                lbl.className = "info-label";
+                lbl.style.marginLeft = "12px";
+                lbl.textContent = "CTA:";
+                const val = document.createElement("span");
+                val.className = "info-value";
+                val.textContent = p.ctaType;
+                row.appendChild(lbl);
+                row.appendChild(val);
+            }
+
+            // Obs sempre aparece; se não tiver, mostra "N/A"
+            const obsText = (p.observacao && p.observacao.trim() !== "") ? p.observacao : "N/A";
+            const lblObs = document.createElement("span");
+            lblObs.className = "info-label";
+            lblObs.style.marginLeft = "12px";
+            lblObs.textContent = "Obs:";
+            const valObs = document.createElement("span");
+            valObs.className = "info-value";
+            valObs.textContent = obsText;
+            row.appendChild(lblObs);
+            row.appendChild(valObs);
+
+            metaGroup.appendChild(row);
+            block.appendChild(metaGroup);
+        }
+
+        // ====== GRID PADRÃO PARA CAMPOS COPIÁVEIS ======
         const grid = document.createElement("div");
         grid.className = "fields-grid";
 
@@ -602,42 +694,136 @@ function renderPushList(tabId, pushes) {
             grid.appendChild(field);
         }
 
-        // Metadados compactos no topo do bloco
-        const metaParts = [];
-        if (p.posicaoJornada) metaParts.push(`posicaoJornada: ${p.posicaoJornada}`);
-        if (p.dataInicio) metaParts.push(`dataInicio: ${p.dataInicio}`);
-        if (p.ctaType) metaParts.push(`CTA: ${p.ctaType}`);
-        if (p.temVar) metaParts.push(`Tem Var: ${p.temVar}`);
-        if (p.tipoVar) metaParts.push(`Tipo Var: ${p.tipoVar}`);
-
-        if (metaParts.length > 0) {
-            const meta = document.createElement("div");
-            meta.className = "meta-row";
-            meta.textContent = metaParts.join(" • ");
-            block.appendChild(meta);
-        }
-
-        if (p.observacao) {
-            const obs = document.createElement("div");
-            obs.className = "meta-row";
-            obs.textContent = `Obs: ${p.observacao}`;
-            block.appendChild(obs);
-        }
-
-        // Apenas os campos copiáveis
+        // Nome Comunicação sozinho na linha (100%)
         addInputField("Nome Comunicação", p.nomeCom, true);
-        addInputField("Título", p.titulo, true);
-        addInputField("Subtítulo", p.subtitulo, true);
-        addInputField("URL de Redirecionamento", p.url, true);
 
+        // ====== LINHA ESPECIAL: Título / Subtítulo / URL (3 colunas) ======
+        const rowTitulos = document.createElement("div");
+        rowTitulos.className = "fields-grid-3";
+
+        function addInputFieldRow(labelText, value) {
+            const field = document.createElement("div");
+            field.className = "field";
+
+            const label = document.createElement("label");
+            label.textContent = labelText;
+
+            const input = document.createElement("input");
+            input.type = "text";
+            input.className = "readonly";
+            input.readOnly = true;
+            input.value = value || "";
+
+            field.appendChild(label);
+            field.appendChild(input);
+            rowTitulos.appendChild(field);
+        }
+
+        addInputFieldRow("Título", p.titulo);
+        addInputFieldRow("Subtítulo", p.subtitulo);
+        addInputFieldRow("URL", p.url);
+
+        // ORDEM: primeiro grid (Nome Comunicação), depois linha 3-colunas
         block.appendChild(grid);
-        body.appendChild(block);
+        block.appendChild(rowTitulos);
 
+        body.appendChild(block);
         item.appendChild(header);
         item.appendChild(body);
         container.appendChild(item);
     });
 }
+
+
+// Usa o OCR.Space para extrair o texto da imagem e preencher o campo de Accessibility Text
+async function fetchAccessibilityText(imageUrl, textarea, tabId) {
+    if (!textarea) return;
+
+    if (!imageUrl) {
+        textarea.value = "";
+        return;
+    }
+
+    // garante que ocrCache exista
+    if (!tabsState.ocrCache) {
+        tabsState.ocrCache = {};
+    }
+
+    // 1) tenta usar cache
+    const cached = tabsState.ocrCache[imageUrl];
+    if (cached) {
+        textarea.value = cached;
+        autoResizeTextareas(tabId);
+        return;
+    }
+
+    // 2) se não tiver cache, chama API
+    textarea.value = "Lendo texto da imagem...";
+
+    try {
+        const form = new FormData();
+        form.append("apikey", OCR_API_KEY); // usa sua key
+        form.append("url", imageUrl);
+        form.append("language", "por");
+
+        const res = await fetch("https://api.ocr.space/parse/image", {
+            method: "POST",
+            body: form
+        });
+
+        if (!res.ok) {
+            textarea.value = "Erro ao chamar OCR (HTTP " + res.status + ").";
+            return;
+        }
+
+        const data = await res.json();
+        console.log("OCR response:", data);
+
+        const txt = data?.ParsedResults?.[0]?.ParsedText?.trim();
+
+        const finalText = txt || "Nenhum texto encontrado.";
+        textarea.value = finalText;
+
+        // salva no cache
+        tabsState.ocrCache[imageUrl] = finalText;
+        saveState();
+    } catch (e) {
+        console.error("Erro OCR:", e);
+        textarea.value = "Erro ao processar imagem.";
+    }
+
+    autoResizeTextareas(tabId);
+}
+
+
+
+    // Formata "2025-11-17T10:00" -> "2025-11-17 T 10:00 (10 AM)"
+    function formatBannerDateTime(str) {
+        if (!str) return "";
+        str = str.trim();
+
+        const parts = str.split("T");
+        if (parts.length !== 2) return str;  // se não tiver "T", devolve como veio
+
+        const date = parts[0].trim();
+        const timeRaw = parts[1].trim(); // ex: "10:00"
+
+        const [hhStrRaw, mmStrRaw] = timeRaw.split(":");
+        const hhStr = (hhStrRaw || "").padStart(2, "0");
+        const mmStr = (mmStrRaw ? mmStrRaw.substring(0, 2) : "00").padStart(2, "0");
+
+        const hh = parseInt(hhStr, 10);
+        if (isNaN(hh)) {
+            return `${date} T ${timeRaw}`;
+        }
+
+        const ampm = hh >= 12 ? "PM" : "AM";
+        let hour12 = hh % 12;
+        if (hour12 === 0) hour12 = 12;
+
+        return `${date} T ${hhStr}:${mmStr} (${hour12} ${ampm})`;
+    }
+
 
 function renderBannerList(tabId, banners) {
     const container = document.getElementById("banner_container_" + tabId);
@@ -663,7 +849,7 @@ function renderBannerList(tabId, banners) {
 
         const titleSpan = document.createElement("span");
         titleSpan.className = "accordion-title";
-        const num = b.numero || (index + 1);
+        const num = index + 1; // sempre 1, 2, 3...
         titleSpan.textContent = `Banner ${num}`;
 
         const arrow = document.createElement("span");
@@ -702,77 +888,267 @@ function renderBannerList(tabId, banners) {
             grid.appendChild(field);
         }
 
-        function addCodeField(labelText, value) {
-            const field = document.createElement("div");
-            field.className = "field field-full";
+        // ========== LINHA 1: Datas + Obs ==========
+        const infoTop = document.createElement("div");
+        infoTop.className = "info-group";
 
-            const label = document.createElement("label");
-            label.textContent = labelText;
+        const rowDates = document.createElement("div");
+        rowDates.className = "info-row";
+
+        if (b.dataInicio) {
+            const lbl = document.createElement("span");
+            lbl.className = "info-label";
+            lbl.textContent = "Data de Início:";
+            const val = document.createElement("span");
+            val.className = "info-value";
+            val.textContent = formatBannerDateTime(b.dataInicio);
+            rowDates.appendChild(lbl);
+            rowDates.appendChild(val);
+        }
+
+        if (b.dataFim) {
+            const lbl = document.createElement("span");
+            lbl.className = "info-label";
+            lbl.style.marginLeft = "12px";
+            lbl.textContent = "Data de Fim:";
+            const val = document.createElement("span");
+            val.className = "info-value";
+            val.textContent = formatBannerDateTime(b.dataFim);
+            rowDates.appendChild(lbl);
+            rowDates.appendChild(val);
+        }
+
+        const obsText = (b.observacao && b.observacao.trim() !== "") ? b.observacao : "N/A";
+        const lblObs = document.createElement("span");
+        lblObs.className = "info-label";
+        lblObs.style.marginLeft = "12px";
+        lblObs.textContent = "Obs:";
+        const valObs = document.createElement("span");
+        valObs.className = "info-value";
+        valObs.textContent = obsText;
+        rowDates.appendChild(lblObs);
+        rowDates.appendChild(valObs);
+
+        infoTop.appendChild(rowDates);
+        block.appendChild(infoTop);
+
+        // ========== LINHA 2: Título / Subtítulo / CTA ==========
+        if (b.titulo || b.subtitulo || b.cta) {
+            const infoTit = document.createElement("div");
+            infoTit.className = "info-group";
+
+            const rowTit = document.createElement("div");
+            rowTit.className = "info-row";
+
+            if (b.titulo) {
+                const lbl = document.createElement("span");
+                lbl.className = "info-label";
+                lbl.textContent = "Título:";
+                const val = document.createElement("span");
+                val.className = "info-value";
+                val.textContent = b.titulo;
+                rowTit.appendChild(lbl);
+                rowTit.appendChild(val);
+            }
+
+            if (b.subtitulo) {
+                const lbl = document.createElement("span");
+                lbl.className = "info-label";
+                lbl.style.marginLeft = "12px";
+                lbl.textContent = "Subtítulo:";
+                const val = document.createElement("span");
+                val.className = "info-value";
+                val.textContent = b.subtitulo;
+                rowTit.appendChild(lbl);
+                rowTit.appendChild(val);
+            }
+
+            if (b.cta) {
+                const lbl = document.createElement("span");
+                lbl.className = "info-label";
+                lbl.style.marginLeft = "12px";
+                lbl.textContent = "CTA:";
+                const val = document.createElement("span");
+                val.className = "info-value";
+                val.textContent = b.cta;
+                rowTit.appendChild(lbl);
+                rowTit.appendChild(val);
+            }
+
+            infoTit.appendChild(rowTit);
+            block.appendChild(infoTit);
+        }
+
+        // ========== LINHA 3: ContentZone / Template / ComponentStyle ==========
+        const hasLayoutMeta = b.contentZone || b.template || b.componentStyle;
+        if (hasLayoutMeta) {
+            const layoutGroup = document.createElement("div");
+            layoutGroup.className = "info-group";
+
+            const rowLayout = document.createElement("div");
+            rowLayout.className = "info-row";
+
+            if (b.contentZone) {
+                const lbl = document.createElement("span");
+                lbl.className = "info-label";
+                lbl.textContent = "ContentZone/CampaignPosition:";
+                const val = document.createElement("span");
+                val.className = "info-value";
+                val.textContent = b.contentZone;
+                rowLayout.appendChild(lbl);
+                rowLayout.appendChild(val);
+            }
+
+            if (b.template) {
+                const lbl = document.createElement("span");
+                lbl.className = "info-label";
+                lbl.style.marginLeft = "12px";
+                lbl.textContent = "Template:";
+                const val = document.createElement("span");
+                val.className = "info-value";
+                val.textContent = b.template;
+                rowLayout.appendChild(lbl);
+                rowLayout.appendChild(val);
+            }
+
+            if (b.componentStyle) {
+                const lbl = document.createElement("span");
+                lbl.className = "info-label";
+                lbl.style.marginLeft = "12px";
+                lbl.textContent = "ComponentStyle:";
+                const val = document.createElement("span");
+                val.className = "info-value";
+                val.textContent = b.componentStyle;
+                rowLayout.appendChild(lbl);
+                rowLayout.appendChild(val);
+            }
+
+            layoutGroup.appendChild(rowLayout);
+            block.appendChild(layoutGroup);
+        }
+
+        // ========== GRID DE CAMPOS COPIÁVEIS ==========
+        addInputField("Nome Experiência", b.nomeExp, true);
+        addInputField("Channel", b.channel, false);
+        addInputField("Imagem (URL)", b.imagem, true);
+
+        // Accessibility Text (textarea editável + botão gerador)
+        const accField = document.createElement("div");
+        accField.className = "field field-full";
+
+        const accLabel = document.createElement("label");
+        accLabel.textContent = "Accessibility Text";
+
+        // linha com textarea + botão
+        const accRow = document.createElement("div");
+        accRow.className = "acc-row";
+
+        const accTextarea = document.createElement("textarea");
+        accTextarea.className = "readonly-multiline";
+        accTextarea.rows = 3;
+        accTextarea.id = `accText_${tabId}_${index}`;
+
+        // 1) Se já existir texto salvo no estado, preenche
+        if (b.accText) {
+            accTextarea.value = b.accText;
+        } else if (tabsState.ocrCache && b.imagem && tabsState.ocrCache[b.imagem]) {
+            // opcional: reaproveita texto de OCR já feito antes
+            accTextarea.value = tabsState.ocrCache[b.imagem];
+            // garante que isso também vá pro banner e pro storage
+            const tabData = tabsState.tabs[tabId];
+            if (tabData && tabData.banners && tabData.banners[index]) {
+                tabData.banners[index].accText = accTextarea.value;
+                saveState();
+            }
+        }
+
+        // 2) Sempre que o usuário editar o texto, salva no estado/localStorage
+        accTextarea.addEventListener("input", () => {
+            const tabData = tabsState.tabs[tabId];
+            if (tabData && tabData.banners && tabData.banners[index]) {
+                tabData.banners[index].accText = accTextarea.value;
+                saveState();
+            }
+        });
+
+        const accBtn = document.createElement("button");
+        accBtn.type = "button";
+        accBtn.textContent = "Gerar Accessibility Text";
+        accBtn.className = "btn-secondary";
+
+        accBtn.addEventListener("click", () => {
+            if (!b.imagem) {
+                accTextarea.value = "Nenhuma URL de imagem.";
+                return;
+            }
+            // passa também o index do banner
+            fetchAccessibilityText(b.imagem, accTextarea, tabId, index);
+        });
+
+        accRow.appendChild(accTextarea);
+        accRow.appendChild(accBtn);
+
+        accField.appendChild(accLabel);
+        accField.appendChild(accRow);
+        grid.appendChild(accField);
+
+
+        // Anexa grid (incluindo Accessibility + botão)
+        block.appendChild(grid);
+
+        // ========== BOTÃO "Mostrar imagem" (logo abaixo do Accessibility) ==========
+        if (b.imagem) {
+            const previewBlock = document.createElement("div");
+            previewBlock.className = "image-preview-block";
+
+            const btn = document.createElement("button");
+            btn.type = "button";
+            btn.textContent = "Mostrar imagem";
+            btn.className = "btn-secondary";
+
+            const img = document.createElement("img");
+            img.src = b.imagem;
+            img.alt = "";
+            img.style.display = "none";
+            img.style.maxWidth = "100%";
+            img.style.marginTop = "8px";
+            img.loading = "lazy";
+
+            btn.addEventListener("click", () => {
+                const visible = img.style.display === "block";
+                img.style.display = visible ? "none" : "block";
+                btn.textContent = visible ? "Mostrar imagem" : "Ocultar imagem";
+            });
+
+            previewBlock.appendChild(btn);
+            previewBlock.appendChild(img);
+            block.appendChild(previewBlock);
+        }
+
+        // ========== JSON GERADO (fica DEPOIS do botão) ==========
+        if (b.json) {
+            const jsonField = document.createElement("div");
+            jsonField.className = "field field-full";
+
+            const jsonLabel = document.createElement("label");
+            jsonLabel.textContent = "JSON gerado";
 
             const pre = document.createElement("pre");
             pre.className = "code-block";
-            pre.textContent = value || "";
+            pre.textContent = b.json || "";
 
-            field.appendChild(label);
-            field.appendChild(pre);
-            grid.appendChild(field);
+            jsonField.appendChild(jsonLabel);
+            jsonField.appendChild(pre);
+            block.appendChild(jsonField);
         }
 
-        // Metadados compactos no topo
-        const meta1 = [];
-        if (b.tipoExibicao) meta1.push(`tipoExibicao: ${b.tipoExibicao}`);
-        if (b.dataInicio) meta1.push(`dataInicio: ${b.dataInicio}`);
-        if (b.dataFim) meta1.push(`dataFim: ${b.dataFim}`);
-        if (b.periodoExibicao) meta1.push(`periodoExibicao: ${b.periodoExibicao}`);
-        if (b.tela) meta1.push(`Tela: ${b.tela}`);
-
-        if (meta1.length > 0) {
-            const meta = document.createElement("div");
-            meta.className = "meta-row";
-            meta.textContent = meta1.join(" • ");
-            block.appendChild(meta);
-        }
-
-        const meta2 = [];
-        if (b.titulo) meta2.push(`Título: ${b.titulo}`);
-        if (b.subtitulo) meta2.push(`Subtítulo: ${b.subtitulo}`);
-        if (b.cta) meta2.push(`CTA: ${b.cta}`);
-
-        if (meta2.length > 0) {
-            const meta = document.createElement("div");
-            meta.className = "meta-row";
-            meta.textContent = meta2.join(" • ");
-            block.appendChild(meta);
-        }
-
-        if (b.observacao) {
-            const obs = document.createElement("div");
-            obs.className = "meta-row";
-            obs.textContent = `Obs: ${b.observacao}`;
-            block.appendChild(obs);
-        }
-
-        // Campos copiáveis
-        addInputField("Nome Experiência", b.nomeExp, true);
-        addInputField("Channel", b.channel, false);
-        addInputField("ContentZone/CampaignPosition", b.contentZone, true);
-        addInputField("Template", b.template, false);
-        addInputField("ComponentStyle", b.componentStyle, false);
-        addInputField("URL de Redirecionamento", b.url, true);
-        addInputField("Imagem", b.imagem, true);
-
-        if (b.json) {
-            addCodeField("JSON gerado", b.json);
-        }
-
-        block.appendChild(grid);
         body.appendChild(block);
-
         item.appendChild(header);
         item.appendChild(body);
         container.appendChild(item);
     });
 }
+
 
 function renderMktScreenView(tabId, mkt) {
     const container = document.getElementById("mkt_container_" + tabId);
@@ -783,12 +1159,12 @@ function renderMktScreenView(tabId, mkt) {
     if (!mkt) {
         const empty = document.createElement("div");
         empty.className = "empty-hint";
-        empty.textContent = "Nenhuma MktScreen encontrada neste card.";
+        empty.textContent = "Nenhuma Marketing Screen encontrada neste card.";
         container.appendChild(empty);
         return;
     }
 
-    // Info geral da MktScreen (macro)
+    // Info geral da Marketing Screen (macro)
     const geral = document.createElement("div");
     geral.className = "subsection";
 
@@ -814,40 +1190,15 @@ function renderMktScreenView(tabId, mkt) {
         grid.appendChild(field);
     }
 
-    const macroNomeExp =
-        mkt.nomeExpMacro ||
-        (mkt.blocos && mkt.blocos.length > 0 ? mkt.blocos[0].nomeExp : "");
-
-    // Metadado topo (posição da jornada)
-    const metaTop = document.createElement("div");
-    metaTop.className = "meta-row";
-    const partsTop = [];
-    if (mkt.posicaoJornada || mkt.posicaoHeader) {
-        partsTop.push(
-            `posicaoJornada: ${mkt.posicaoJornada || mkt.posicaoHeader}`
-        );
-    }
-    metaTop.textContent = partsTop.join(" • ");
-    if (partsTop.length > 0) {
-        geral.appendChild(metaTop);
-    }
-
-    // Inputs macro: Nome Experiência + URL (copiáveis)
-    addInputField("Nome Experiência", macroNomeExp, true);
-    addInputField("URL MktScreen", mkt.url || "", true);
+    // Campos macro: Channel + URL (copiáveis)
+    addInputField("Channel", mkt.channel || "", true);
+    addInputField("URL Marketing Screen", mkt.url || "", true);
 
     geral.appendChild(grid);
 
-    const meta2 = document.createElement("div");
-    meta2.className = "meta-row";
-    meta2.textContent =
-        `Blocos (informado no card): ${mkt.blocosQtd || "-"} • ` +
-        `Blocos (encontrados): ${mkt.blocos ? String(mkt.blocos.length) : "0"}`;
-    geral.appendChild(meta2);
-
     container.appendChild(geral);
 
-    // Blocos individuais como accordions internos
+    // Blocos individuais como accordions internos (mantém igual)
     if (mkt.blocos && mkt.blocos.length > 0) {
         mkt.blocos.forEach((b, index) => {
             const item = document.createElement("div");
@@ -913,7 +1264,7 @@ function renderMktScreenView(tabId, mkt) {
                 gridBloco.appendChild(field);
             }
 
-            // Apenas Nome Experiência + JSON do bloco
+            // Apenas Nome Experiência + JSON do bloco (como já estava)
             addInputFieldBloco("Nome Experiência", b.nomeExp, true);
             addCodeFieldBloco("JSON do bloco", b.json);
 
@@ -926,6 +1277,7 @@ function renderMktScreenView(tabId, mkt) {
         });
     }
 }
+
 
 // ===================== UI: CRIAÇÃO DE ABAS =====================
 
@@ -967,15 +1319,37 @@ function createTabFromState(tabId, data) {
     content.id = "content_" + tabId;
 
     content.innerHTML = `
-        <h2>Entrada do Card</h2>
+        <h2>Card Input</h2>
         <div class="field field-full">
             <textarea class="card-input"
-        rows="1"
-        oninput="processCard('${tabId}', this.value)"
-        onpaste="handlePaste(event)">${data.input || ""}</textarea>
+                    rows="1"
+                    oninput="processCard('${tabId}', this.value)"
+                    onpaste="handlePaste(event)">${data.input || ""}</textarea>
         </div>
 
-        <h2>Título do Card</h2>
+        <h2>Informações Gerais</h2>
+
+        <div class="info-group">
+            <div class="info-row">
+                <span class="info-label">Canais:</span>
+                <span id="canaisText_${tabId}" class="info-value"></span>
+
+                <span class="info-label" style="margin-left:12px;">SOLICITANTE:</span>
+                <span id="solicitanteText_${tabId}" class="info-value">${data.solicitante || ""}</span>
+
+                <span class="info-label" style="margin-left:12px;">Observação:</span>
+                <span id="obsText_${tabId}" class="info-value">${data.observacao || ""}</span>
+            </div>
+
+            <div class="info-row">
+                <span class="info-label">Descrição do Card:</span>
+                <span id="desc_${tabId}" class="info-value">${data.descricao || ""}</span>
+
+                <span class="info-label" style="margin-left:12px;">DESCRICAO CAMPANHA:</span>
+                <span id="descCamp_${tabId}" class="info-value">${data.descCamp || ""}</span>
+            </div>
+        </div>
+
         <div class="fields-grid">
             <div class="field">
                 <label>Nome do Card / Jornada</label>
@@ -985,27 +1359,6 @@ function createTabFromState(tabId, data) {
             <div class="field">
                 <label>Base</label>
                 <input id="base_${tabId}" class="readonly" type="text" readonly value="${data.base || ""}">
-            </div>
-        </div>
-
-        <div class="info-group">
-            <div class="info-row">
-                <span class="info-label">Descrição do Card:</span>
-                <span id="desc_${tabId}" class="info-value">${data.descricao || ""}</span>
-                <span class="info-label" style="margin-left:12px;">SOLICITANTE:</span>
-                <span id="solicitanteText_${tabId}" class="info-value">${data.solicitante || ""}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">DESCRICAO CAMPANHA:</span>
-                <span id="descCamp_${tabId}" class="info-value">${data.descCamp || ""}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Observação:</span>
-                <span id="obsText_${tabId}" class="info-value">${data.observacao || ""}</span>
-            </div>
-            <div class="info-row">
-                <span class="info-label">Canais:</span>
-                <span id="canaisText_${tabId}" class="info-value"></span>
             </div>
         </div>
 
@@ -1034,7 +1387,7 @@ function createTabFromState(tabId, data) {
         <!-- MktScreen pai -->
         <div class="accordion">
             <div class="accordion-header" data-accordion-target="mktWrap_${tabId}">
-                <span class="accordion-title">MktScreen</span>
+                <span class="accordion-title">Marketing Screen</span>
                 <span class="accordion-arrow">▸</span>
             </div>
             <div id="mktWrap_${tabId}" class="accordion-body">
@@ -1042,6 +1395,7 @@ function createTabFromState(tabId, data) {
             </div>
         </div>
     `;
+
 
     document.getElementById("content-container").appendChild(content);
 
