@@ -1130,8 +1130,9 @@ function renderBannerList(tabId, banners) {
             block.appendChild(previewBlock);
         }
 
-        // ========== JSON GERADO + JSON FINAL ==========
+        // ========== JSON GERADO + OFFER ID + JSON FINAL ==========
         if (b.json) {
+            // JSON gerado (original)
             const jsonField = document.createElement("div");
             jsonField.className = "field field-full";
 
@@ -1148,8 +1149,8 @@ function renderBannerList(tabId, banners) {
             details.appendChild(summary);
             details.appendChild(pre);
             jsonField.appendChild(details);
-            block.appendChild(jsonField);
 
+            // JSON Final
             const jsonFinalField = document.createElement("div");
             jsonFinalField.className = "field field-full";
 
@@ -1164,10 +1165,12 @@ function renderBannerList(tabId, banners) {
             jsonFinalArea.rows = 10;
             jsonFinalArea.spellcheck = false;
 
+            let defaultFinalObj = null;
             let defaultFinalJson = "";
             try {
                 const obj = JSON.parse(b.json);
 
+                // se for fullscreen, troca título por placeholder
                 if (typeof obj.campaignTitle === "string" &&
                     obj.campaignTitle.toLowerCase().includes("fullscreen")) {
                     obj.campaignTitle = "numero_do_offerID";
@@ -1182,6 +1185,7 @@ function renderBannerList(tabId, banners) {
 
                 obj.accessibilityText = "titulo_da_imageUrl";
 
+                defaultFinalObj = obj;
                 defaultFinalJson = JSON.stringify(obj, null, 2);
             } catch (e) {
                 defaultFinalJson = b.json;
@@ -1189,17 +1193,29 @@ function renderBannerList(tabId, banners) {
 
             const tabData = tabsState.tabs[tabId];
             let stored = null;
+            let offerId = "";
+
             if (tabData && tabData.banners && tabData.banners[index]) {
-                stored = tabData.banners[index].jsonFinal || null;
+                stored  = tabData.banners[index].jsonFinal || null;
+                offerId = tabData.banners[index].offerId   || "";
+            }
+
+            // se já existir offerId salvo e ainda não houver jsonFinal salvo,
+            // aplica o número direto no campaignTitle
+            if (!stored && offerId && defaultFinalObj) {
+                defaultFinalObj.campaignTitle = offerId;
+                defaultFinalJson = JSON.stringify(defaultFinalObj, null, 2);
             }
 
             jsonFinalArea.value = stored || defaultFinalJson;
 
+            // primeira vez: persiste o JSON Final calculado
             if (tabData && tabData.banners && tabData.banners[index] && !tabData.banners[index].jsonFinal) {
                 tabData.banners[index].jsonFinal = jsonFinalArea.value;
                 saveState();
             }
 
+            // se você editar o JSON Final na mão, continua salvando normalmente
             jsonFinalArea.addEventListener("input", () => {
                 const tData = tabsState.tabs[tabId];
                 if (tData && tData.banners && tData.banners[index]) {
@@ -1210,6 +1226,62 @@ function renderBannerList(tabId, banners) {
 
             jsonFinalField.appendChild(jsonFinalLabel);
             jsonFinalField.appendChild(jsonFinalArea);
+
+        // Campo Número do Offer ID (antes do JSON Final), no estilo do Accessibility Text
+        const offerField = document.createElement("div");
+        offerField.className = "field field-full";
+
+        const offerLabel = document.createElement("label");
+        offerLabel.textContent = "Número do Offer ID";
+
+        // linha estilo acc-row (mesmo layout do Accessibility Text)
+        const offerRow = document.createElement("div");
+        offerRow.className = "acc-row";
+
+        const offerInput = document.createElement("input");
+        offerInput.type = "text";
+        offerInput.className = "input";   // usa o mesmo estilo dos outros inputs
+        offerInput.value = offerId || "";
+
+        offerInput.addEventListener("input", () => {
+            const value = offerInput.value.trim();
+            const tData = tabsState.tabs[tabId];
+            if (tData && tData.banners && tData.banners[index]) {
+                tData.banners[index].offerId = value;
+            }
+
+            // Atualiza campaignTitle dentro do JSON Final
+            try {
+                const obj = JSON.parse(jsonFinalArea.value || "{}");
+
+                if (value) {
+                    // quando tiver ID: campaignTitle = ID
+                    obj.campaignTitle = value;
+                } else {
+                    // se apagar o ID: volta pro placeholder
+                    obj.campaignTitle = "numero_do_offerID";
+                }
+
+                const updated = JSON.stringify(obj, null, 2);
+                jsonFinalArea.value = updated;
+
+                if (tData && tData.banners && tData.banners[index]) {
+                    tData.banners[index].jsonFinal = updated;
+                    saveState();
+                }
+            } catch (e) {
+                // se o JSON estiver inválido, não mexe
+            }
+        });
+
+        offerRow.appendChild(offerInput);
+        offerField.appendChild(offerLabel);
+        offerField.appendChild(offerRow);
+
+
+            // Ordem: JSON original -> Número do Offer ID -> JSON Final
+            block.appendChild(jsonField);
+            block.appendChild(offerField);
             block.appendChild(jsonFinalField);
         }
 
@@ -1586,14 +1658,14 @@ function processCard(tabId, texto) {
     // pega estado atual da aba (se existir)
     const tabData = tabsState.tabs[tabId] || {};
 
-    // ===== PRESERVAR accText / jsonFinal DOS BANNERS ANTIGOS =====
     const oldBanners = tabData.banners || [];
     const mergedBanners = banners.map((b, idx) => {
         const old = oldBanners[idx] || {};
         return {
             ...b,
-            accText:  old.accText  || "",
-            jsonFinal: old.jsonFinal || ""
+            accText:   old.accText   || "",
+            jsonFinal: old.jsonFinal || "",
+            offerId:   old.offerId   || ""
         };
     });
 
