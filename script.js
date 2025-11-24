@@ -562,17 +562,22 @@ function renderPushList(tabId, pushes) {
     const container = document.getElementById("push_container_" + tabId);
     if (!container) return;
 
+    // pega o accordion pai (bloco "Push")
+    const accordion = container.closest(".accordion");
+
     container.innerHTML = "";
 
+    // se não tiver push, esconde o accordion e sai
     if (!pushes || pushes.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "empty-hint";
-        empty.textContent = "Nenhum push encontrado neste card.";
-        container.appendChild(empty);
+        if (accordion) accordion.style.display = "none";
         return;
     }
 
-    // vamos usar a data do push anterior para calcular o "wait X dias"
+    // se tiver push, garante que o bloco esteja visível
+    if (accordion) accordion.style.display = "";
+
+    // ===== a partir daqui é igual ao que você já tinha, só tirei o bloco "Nenhum push encontrado..." =====
+
     let lastDate = null;
 
     pushes.forEach((p, index) => {
@@ -602,13 +607,12 @@ function renderPushList(tabId, pushes) {
         const block = document.createElement("div");
         block.className = "subsection";
 
-        // ====== META NO TOPO (Data de Início, CTA, Obs) ======
+        // ===== META (igual antes) =====
         let decoratedDate = "";
         if (p.dataInicio) {
             const current = new Date(p.dataInicio.trim());
             if (!isNaN(current.getTime())) {
                 if (!lastDate) {
-                    // primeiro push
                     decoratedDate = `${p.dataInicio} (inicial)`;
                 } else {
                     const diffMs = current.getTime() - lastDate.getTime();
@@ -621,7 +625,6 @@ function renderPushList(tabId, pushes) {
                 }
                 lastDate = current;
             } else {
-                // se a data não parsear, mostra cru
                 decoratedDate = p.dataInicio;
             }
         }
@@ -657,7 +660,6 @@ function renderPushList(tabId, pushes) {
                 row.appendChild(val);
             }
 
-            // Obs sempre aparece; se não tiver, mostra "N/A"
             const obsText = (p.observacao && p.observacao.trim() !== "") ? p.observacao : "N/A";
             const lblObs = document.createElement("span");
             lblObs.className = "info-label";
@@ -673,7 +675,6 @@ function renderPushList(tabId, pushes) {
             block.appendChild(metaGroup);
         }
 
-        // ====== GRID PADRÃO PARA CAMPOS COPIÁVEIS ======
         const grid = document.createElement("div");
         grid.className = "fields-grid";
 
@@ -696,10 +697,8 @@ function renderPushList(tabId, pushes) {
             grid.appendChild(field);
         }
 
-        // Nome Comunicação sozinho na linha (100%)
         addInputField("Nome Comunicação", p.nomeCom, true);
 
-        // ====== LINHA ESPECIAL: Título / Subtítulo / URL (3 colunas) ======
         const rowTitulos = document.createElement("div");
         rowTitulos.className = "fields-grid-3";
 
@@ -725,7 +724,6 @@ function renderPushList(tabId, pushes) {
         addInputFieldRow("Subtítulo", p.subtitulo);
         addInputFieldRow("URL", p.url);
 
-        // ORDEM: primeiro grid (Nome Comunicação), depois linha 3-colunas
         block.appendChild(grid);
         block.appendChild(rowTitulos);
 
@@ -735,6 +733,7 @@ function renderPushList(tabId, pushes) {
         container.appendChild(item);
     });
 }
+
 
 
 // Usa o OCR.Space para extrair o texto da imagem e preencher o campo de Accessibility Text
@@ -832,15 +831,19 @@ function renderBannerList(tabId, banners) {
     const container = document.getElementById("banner_container_" + tabId);
     if (!container) return;
 
+    // accordion pai (bloco "Banners")
+    const accordion = container.closest(".accordion");
+
     container.innerHTML = "";
 
+    // se não tiver banners, esconde o bloco inteiro
     if (!banners || banners.length === 0) {
-        const empty = document.createElement("div");
-        empty.className = "empty-hint";
-        empty.textContent = "Nenhum banner encontrado neste card.";
-        container.appendChild(empty);
+        if (accordion) accordion.style.display = "none";
         return;
     }
+
+    // se tiver banners, garante que o bloco esteja visível
+    if (accordion) accordion.style.display = "";
 
     banners.forEach((b, index) => {
         const item = document.createElement("div");
@@ -1035,14 +1038,13 @@ function renderBannerList(tabId, banners) {
         addInputField("Channel", b.channel, false);
         addInputField("Imagem (URL)", b.imagem, true);
 
-        // Accessibility Text (textarea editável + botão gerador)
+        // Accessibility Text (textarea + botão)
         const accField = document.createElement("div");
         accField.className = "field field-full";
 
         const accLabel = document.createElement("label");
         accLabel.textContent = "Accessibility Text";
 
-        // linha com textarea + botão
         const accRow = document.createElement("div");
         accRow.className = "acc-row";
 
@@ -1051,13 +1053,10 @@ function renderBannerList(tabId, banners) {
         accTextarea.rows = 3;
         accTextarea.id = `accText_${tabId}_${index}`;
 
-        // 1) Se já existir texto salvo no estado, preenche
         if (b.accText) {
             accTextarea.value = b.accText;
         } else if (tabsState.ocrCache && b.imagem && tabsState.ocrCache[b.imagem]) {
-            // opcional: reaproveita texto de OCR já feito antes
             accTextarea.value = tabsState.ocrCache[b.imagem];
-            // garante que isso também vá pro banner e pro storage
             const tabData = tabsState.tabs[tabId];
             if (tabData && tabData.banners && tabData.banners[index]) {
                 tabData.banners[index].accText = accTextarea.value;
@@ -1065,7 +1064,6 @@ function renderBannerList(tabId, banners) {
             }
         }
 
-        // 2) Sempre que o usuário editar o texto, salva no estado/localStorage
         accTextarea.addEventListener("input", () => {
             const tabData = tabsState.tabs[tabId];
             if (tabData && tabData.banners && tabData.banners[index]) {
@@ -1084,22 +1082,18 @@ function renderBannerList(tabId, banners) {
                 accTextarea.value = "Nenhuma URL de imagem.";
                 return;
             }
-            // passa também o index do banner
             fetchAccessibilityText(b.imagem, accTextarea, tabId, index);
         });
 
         accRow.appendChild(accTextarea);
         accRow.appendChild(accBtn);
-
         accField.appendChild(accLabel);
         accField.appendChild(accRow);
         grid.appendChild(accField);
 
-
-        // Anexa grid (incluindo Accessibility + botão)
         block.appendChild(grid);
 
-        // ========== BOTÃO "Mostrar imagem" (logo abaixo do Accessibility) ==========
+        // ========== PREVIEW DA IMAGEM ==========
         if (b.imagem) {
             const previewBlock = document.createElement("div");
             previewBlock.className = "image-preview-block";
@@ -1128,99 +1122,88 @@ function renderBannerList(tabId, banners) {
             block.appendChild(previewBlock);
         }
 
-// ========== JSON GERADO (original) + JSON FINAL ==========
-if (b.json) {
-    // ---- JSON gerado (original) em toggle ----
-    const jsonField = document.createElement("div");
-    jsonField.className = "field field-full";
+        // ========== JSON GERADO + JSON FINAL ==========
+        if (b.json) {
+            const jsonField = document.createElement("div");
+            jsonField.className = "field field-full";
 
-    const details = document.createElement("details");
-    details.className = "json-original-toggle";
+            const details = document.createElement("details");
+            details.className = "json-original-toggle";
 
-    const summary = document.createElement("summary");
-    summary.textContent = "JSON gerado (original)";
+            const summary = document.createElement("summary");
+            summary.textContent = "JSON gerado (original)";
 
-    const pre = document.createElement("pre");
-    pre.className = "code-block";
-    pre.textContent = b.json || "";
+            const pre = document.createElement("pre");
+            pre.className = "code-block";
+            pre.textContent = b.json || "";
 
-    details.appendChild(summary);
-    details.appendChild(pre);
-    jsonField.appendChild(details);
-    block.appendChild(jsonField);
+            details.appendChild(summary);
+            details.appendChild(pre);
+            jsonField.appendChild(details);
+            block.appendChild(jsonField);
 
-    // ---- JSON Final (EDITÁVEL) ----
-    const jsonFinalField = document.createElement("div");
-    jsonFinalField.className = "field field-full";
+            const jsonFinalField = document.createElement("div");
+            jsonFinalField.className = "field field-full";
 
-    const jsonFinalLabel = document.createElement("label");
-    jsonFinalLabel.textContent = "JSON Final";
+            const jsonFinalLabel = document.createElement("label");
+            jsonFinalLabel.textContent = "JSON Final";
 
-    const jsonFinalArea = document.createElement("textarea");
-    jsonFinalArea.className = "json-final";
-    jsonFinalArea.style.width = "100%";
-    jsonFinalArea.style.minHeight = "220px";
-    jsonFinalArea.style.fontFamily = "monospace";
-    jsonFinalArea.rows = 10;
-    jsonFinalArea.spellcheck = false;
+            const jsonFinalArea = document.createElement("textarea");
+            jsonFinalArea.className = "json-final";
+            jsonFinalArea.style.width = "100%";
+            jsonFinalArea.style.minHeight = "220px";
+            jsonFinalArea.style.fontFamily = "monospace";
+            jsonFinalArea.rows = 10;
+            jsonFinalArea.spellcheck = false;
 
-    // 1) JSON final padrão gerado a partir do original
-    let defaultFinalJson = "";
-    try {
-        const obj = JSON.parse(b.json);
+            let defaultFinalJson = "";
+            try {
+                const obj = JSON.parse(b.json);
 
-        // se campaignTitle/Subtitle/messageButton tiverem "fullscreen"
-        if (typeof obj.campaignTitle === "string" &&
-            obj.campaignTitle.toLowerCase().includes("fullscreen")) {
-            obj.campaignTitle = "numero_do_offerID";
+                if (typeof obj.campaignTitle === "string" &&
+                    obj.campaignTitle.toLowerCase().includes("fullscreen")) {
+                    obj.campaignTitle = "numero_do_offerID";
+                }
+
+                obj.campaignSubtitle = "";
+                obj.messageButton   = "";
+
+                if (b.contentZone) {
+                    obj.campaignPosition = b.contentZone;
+                }
+
+                obj.accessibilityText = "titulo_da_imageUrl";
+
+                defaultFinalJson = JSON.stringify(obj, null, 2);
+            } catch (e) {
+                defaultFinalJson = b.json;
+            }
+
+            const tabData = tabsState.tabs[tabId];
+            let stored = null;
+            if (tabData && tabData.banners && tabData.banners[index]) {
+                stored = tabData.banners[index].jsonFinal || null;
+            }
+
+            jsonFinalArea.value = stored || defaultFinalJson;
+
+            if (tabData && tabData.banners && tabData.banners[index] && !tabData.banners[index].jsonFinal) {
+                tabData.banners[index].jsonFinal = jsonFinalArea.value;
+                saveState();
+            }
+
+            jsonFinalArea.addEventListener("input", () => {
+                const tData = tabsState.tabs[tabId];
+                if (tData && tData.banners && tData.banners[index]) {
+                    tData.banners[index].jsonFinal = jsonFinalArea.value;
+                    saveState();
+                }
+            });
+
+            jsonFinalField.appendChild(jsonFinalLabel);
+            jsonFinalField.appendChild(jsonFinalArea);
+            block.appendChild(jsonFinalField);
         }
-
-        obj.campaignSubtitle = "";
-        obj.messageButton   = "";
-
-        // campaignPosition = ContentZone/CampaignPosition
-        if (b.contentZone) {
-            obj.campaignPosition = b.contentZone;
-        }
-
-        // placeholder para o texto da imagem
-        obj.accessibilityText = "titulo_da_imageUrl";
-
-        defaultFinalJson = JSON.stringify(obj, null, 2);
-    } catch (e) {
-        // se der erro, pelo menos mostra o original
-        defaultFinalJson = b.json;
-    }
-
-    // 2) Se já existir JSON Final salvo no estado, usa ele
-    const tabData = tabsState.tabs[tabId];
-    let stored = null;
-    if (tabData && tabData.banners && tabData.banners[index]) {
-        stored = tabData.banners[index].jsonFinal || null;
-    }
-
-    jsonFinalArea.value = stored || defaultFinalJson;
-
-    // Se ainda não tinha jsonFinal nesse banner, salva o padrão
-    if (tabData && tabData.banners && tabData.banners[index] && !tabData.banners[index].jsonFinal) {
-        tabData.banners[index].jsonFinal = jsonFinalArea.value;
-        saveState();
-    }
-
-    // 3) Sempre que você editar, salva no localStorage
-    jsonFinalArea.addEventListener("input", () => {
-        const tData = tabsState.tabs[tabId];
-        if (tData && tData.banners && tData.banners[index]) {
-            tData.banners[index].jsonFinal = jsonFinalArea.value;
-            saveState();
-        }
-    });
-
-    jsonFinalField.appendChild(jsonFinalLabel);
-    jsonFinalField.appendChild(jsonFinalArea);
-    block.appendChild(jsonFinalField);
-}
-
 
         body.appendChild(block);
         item.appendChild(header);
@@ -1234,17 +1217,19 @@ function renderMktScreenView(tabId, mkt) {
     const container = document.getElementById("mkt_container_" + tabId);
     if (!container) return;
 
+    const accordion = container.closest(".accordion");
+
     container.innerHTML = "";
 
     if (!mkt) {
-        const empty = document.createElement("div");
-        empty.className = "empty-hint";
-        empty.textContent = "Nenhuma Marketing Screen encontrada neste card.";
-        container.appendChild(empty);
+        if (accordion) accordion.style.display = "none";
         return;
     }
 
-    // Info geral da Marketing Screen (macro)
+    if (accordion) accordion.style.display = "";
+
+    // ===== resto igual ao que você já tinha =====
+
     const geral = document.createElement("div");
     geral.className = "subsection";
 
@@ -1270,15 +1255,12 @@ function renderMktScreenView(tabId, mkt) {
         grid.appendChild(field);
     }
 
-    // Campos macro: Channel + URL (copiáveis)
     addInputField("Channel", mkt.channel || "", true);
     addInputField("URL Marketing Screen", mkt.url || "", true);
 
     geral.appendChild(grid);
-
     container.appendChild(geral);
 
-    // Blocos individuais como accordions internos (mantém igual)
     if (mkt.blocos && mkt.blocos.length > 0) {
         mkt.blocos.forEach((b, index) => {
             const item = document.createElement("div");
@@ -1344,7 +1326,6 @@ function renderMktScreenView(tabId, mkt) {
                 gridBloco.appendChild(field);
             }
 
-            // Apenas Nome Experiência + JSON do bloco (como já estava)
             addInputFieldBloco("Nome Experiência", b.nomeExp, true);
             addCodeFieldBloco("JSON do bloco", b.json);
 
@@ -1357,7 +1338,6 @@ function renderMktScreenView(tabId, mkt) {
         });
     }
 }
-
 
 // ===================== UI: CRIAÇÃO DE ABAS =====================
 

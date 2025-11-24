@@ -106,7 +106,7 @@ body {
 
 /* JSON Final */
 .json-final {
-    min-height: 220px;     /* maiorzinho pra JSON */
+    min-height: 120px;     /* maiorzinho pra JSON */
     font-family: Consolas, "Courier New", monospace;
     font-size: 12px;
 }
