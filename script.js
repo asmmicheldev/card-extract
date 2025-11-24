@@ -826,6 +826,14 @@ async function fetchAccessibilityText(imageUrl, textarea, tabId) {
     }
 
 
+    // Monta a URL da API de QR Code a partir de um deeplink
+function buildQrCodeUrl(link) {
+    if (!link) return "";
+    const encoded = encodeURIComponent(link.trim());
+    return `https://api.qrserver.com/v1/create-qr-code/?data=${encoded}&size=300x300`;
+}
+
+
 
 function renderBannerList(tabId, banners) {
     const container = document.getElementById("banner_container_" + tabId);
@@ -1221,15 +1229,16 @@ function renderMktScreenView(tabId, mkt) {
 
     container.innerHTML = "";
 
+    // se não tiver mktScreen, esconde o bloco
     if (!mkt) {
         if (accordion) accordion.style.display = "none";
         return;
     }
 
+    // garante que o bloco "Marketing Screen" apareça
     if (accordion) accordion.style.display = "";
 
-    // ===== resto igual ao que você já tinha =====
-
+    // ===== BLOCO GERAL (Channel + URL + QR) =====
     const geral = document.createElement("div");
     geral.className = "subsection";
 
@@ -1259,8 +1268,49 @@ function renderMktScreenView(tabId, mkt) {
     addInputField("URL Marketing Screen", mkt.url || "", true);
 
     geral.appendChild(grid);
+
+    // ===== BLOCO "Mostrar QR Code" =====
+    const qrBlock = document.createElement("div");
+    qrBlock.className = "image-preview-block";
+
+    const qrBtn = document.createElement("button");
+    qrBtn.type = "button";
+    qrBtn.textContent = "Mostrar QR Code";
+    qrBtn.className = "btn-secondary";
+
+    const qrImg = document.createElement("img");
+    qrImg.style.display = "none";
+    qrImg.style.maxWidth = "260px";
+    qrImg.style.marginTop = "8px";
+    qrImg.loading = "lazy";
+
+    qrBtn.addEventListener("click", () => {
+        const visible = qrImg.style.display === "block";
+
+        if (!visible) {
+            const link = (mkt.url || "").trim();
+            if (!link) {
+                alert("URL Marketing Screen vazia. Copie/cole o deeplink no card primeiro.");
+                return;
+            }
+
+            // só define o src UMA vez, na primeira abertura
+            if (!qrImg.src) {
+                qrImg.src = buildQrCodeUrl(link);
+            }
+        }
+
+        qrImg.style.display = visible ? "none" : "block";
+        qrBtn.textContent = visible ? "Mostrar QR Code" : "Ocultar QR Code";
+    });
+
+    qrBlock.appendChild(qrBtn);
+    qrBlock.appendChild(qrImg);
+    geral.appendChild(qrBlock);
+
     container.appendChild(geral);
 
+    // ===== BLOCOS DA MKTSCREEN (já existiam) =====
     if (mkt.blocos && mkt.blocos.length > 0) {
         mkt.blocos.forEach((b, index) => {
             const item = document.createElement("div");
@@ -1338,6 +1388,7 @@ function renderMktScreenView(tabId, mkt) {
         });
     }
 }
+
 
 // ===================== UI: CRIAÇÃO DE ABAS =====================
 
