@@ -754,6 +754,8 @@ async function fetchAccessibilityText(imageUrl, textarea, tabId) {
     const cached = tabsState.ocrCache[imageUrl];
     if (cached) {
         textarea.value = cached;
+        // dispara o "input" para atualizar JSON Final
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
         autoResizeTextareas(tabId);
         return;
     }
@@ -788,6 +790,9 @@ async function fetchAccessibilityText(imageUrl, textarea, tabId) {
         // salva no cache
         tabsState.ocrCache[imageUrl] = finalText;
         saveState();
+
+        // dispara o "input" para atualizar JSON Final (accessibilityText)
+        textarea.dispatchEvent(new Event("input", { bubbles: true }));
     } catch (e) {
         console.error("Erro OCR:", e);
         textarea.value = "Erro ao processar imagem.";
@@ -795,6 +800,7 @@ async function fetchAccessibilityText(imageUrl, textarea, tabId) {
 
     autoResizeTextareas(tabId);
 }
+
 
 
 
@@ -882,6 +888,10 @@ function renderBannerList(tabId, banners) {
 
         const grid = document.createElement("div");
         grid.className = "fields-grid";
+
+        // vamos ligar Accessibility Text <-> JSON Final
+        let accTextarea = null;
+        let jsonFinalArea = null;
 
         function addInputField(labelText, value, full = false) {
             const field = document.createElement("div");
@@ -1046,7 +1056,7 @@ function renderBannerList(tabId, banners) {
         addInputField("Channel", b.channel, false);
         addInputField("Imagem (URL)", b.imagem, true);
 
-        // Accessibility Text (textarea + botão)
+        // ---------- Accessibility Text ----------
         const accField = document.createElement("div");
         accField.className = "field field-full";
 
@@ -1056,7 +1066,7 @@ function renderBannerList(tabId, banners) {
         const accRow = document.createElement("div");
         accRow.className = "acc-row";
 
-        const accTextarea = document.createElement("textarea");
+        accTextarea = document.createElement("textarea");
         accTextarea.className = "readonly-multiline";
         accTextarea.rows = 3;
         accTextarea.id = `accText_${tabId}_${index}`;
@@ -1074,8 +1084,28 @@ function renderBannerList(tabId, banners) {
 
         accTextarea.addEventListener("input", () => {
             const tabData = tabsState.tabs[tabId];
+            const value = accTextarea.value;
+
             if (tabData && tabData.banners && tabData.banners[index]) {
-                tabData.banners[index].accText = accTextarea.value;
+                tabData.banners[index].accText = value;
+            }
+
+            // Atualiza o accessibilityText dentro do JSON Final
+            if (jsonFinalArea) {
+                try {
+                    const obj = JSON.parse(jsonFinalArea.value || "{}");
+                    obj.accessibilityText = value || "titulo_da_imageUrl";
+                    const updated = JSON.stringify(obj, null, 2);
+                    jsonFinalArea.value = updated;
+
+                    if (tabData && tabData.banners && tabData.banners[index]) {
+                        tabData.banners[index].jsonFinal = updated;
+                        saveState();
+                    }
+                } catch (e) {
+                    // se JSON estiver inválido, ignora
+                }
+            } else {
                 saveState();
             }
         });
@@ -1090,7 +1120,7 @@ function renderBannerList(tabId, banners) {
                 accTextarea.value = "Nenhuma URL de imagem.";
                 return;
             }
-            fetchAccessibilityText(b.imagem, accTextarea, tabId, index);
+            fetchAccessibilityText(b.imagem, accTextarea, tabId);
         });
 
         accRow.appendChild(accTextarea);
@@ -1157,7 +1187,7 @@ function renderBannerList(tabId, banners) {
             const jsonFinalLabel = document.createElement("label");
             jsonFinalLabel.textContent = "JSON Final";
 
-            const jsonFinalArea = document.createElement("textarea");
+            jsonFinalArea = document.createElement("textarea");
             jsonFinalArea.className = "json-final";
             jsonFinalArea.style.width = "100%";
             jsonFinalArea.style.minHeight = "220px";
@@ -1183,7 +1213,11 @@ function renderBannerList(tabId, banners) {
                     obj.campaignPosition = b.contentZone;
                 }
 
-                obj.accessibilityText = "titulo_da_imageUrl";
+                // coloca accessibilityText com o valor atual (ou placeholder)
+                const initialAcc = b.accText && b.accText.trim() !== ""
+                    ? b.accText
+                    : "titulo_da_imageUrl";
+                obj.accessibilityText = initialAcc;
 
                 defaultFinalObj = obj;
                 defaultFinalJson = JSON.stringify(obj, null, 2);
@@ -1227,57 +1261,56 @@ function renderBannerList(tabId, banners) {
             jsonFinalField.appendChild(jsonFinalLabel);
             jsonFinalField.appendChild(jsonFinalArea);
 
-        // Campo Número do Offer ID (antes do JSON Final), no estilo do Accessibility Text
-        const offerField = document.createElement("div");
-        offerField.className = "field field-full";
+            // Campo Número do Offer ID (antes do JSON Final), no estilo do Accessibility Text
+            const offerField = document.createElement("div");
+            offerField.className = "field field-full";
 
-        const offerLabel = document.createElement("label");
-        offerLabel.textContent = "Número do Offer ID";
+            const offerLabel = document.createElement("label");
+            offerLabel.textContent = "Número do Offer ID";
 
-        // linha estilo acc-row (mesmo layout do Accessibility Text)
-        const offerRow = document.createElement("div");
-        offerRow.className = "acc-row";
+            // linha estilo acc-row (mesmo layout do Accessibility Text)
+            const offerRow = document.createElement("div");
+            offerRow.className = "acc-row";
 
-        const offerInput = document.createElement("input");
-        offerInput.type = "text";
-        offerInput.className = "input";   // usa o mesmo estilo dos outros inputs
-        offerInput.value = offerId || "";
+            const offerInput = document.createElement("input");
+            offerInput.type = "text";
+            offerInput.className = "input";   // usa o mesmo estilo dos outros inputs
+            offerInput.value = offerId || "";
 
-        offerInput.addEventListener("input", () => {
-            const value = offerInput.value.trim();
-            const tData = tabsState.tabs[tabId];
-            if (tData && tData.banners && tData.banners[index]) {
-                tData.banners[index].offerId = value;
-            }
-
-            // Atualiza campaignTitle dentro do JSON Final
-            try {
-                const obj = JSON.parse(jsonFinalArea.value || "{}");
-
-                if (value) {
-                    // quando tiver ID: campaignTitle = ID
-                    obj.campaignTitle = value;
-                } else {
-                    // se apagar o ID: volta pro placeholder
-                    obj.campaignTitle = "numero_do_offerID";
-                }
-
-                const updated = JSON.stringify(obj, null, 2);
-                jsonFinalArea.value = updated;
-
+            offerInput.addEventListener("input", () => {
+                const value = offerInput.value.trim();
+                const tData = tabsState.tabs[tabId];
                 if (tData && tData.banners && tData.banners[index]) {
-                    tData.banners[index].jsonFinal = updated;
-                    saveState();
+                    tData.banners[index].offerId = value;
                 }
-            } catch (e) {
-                // se o JSON estiver inválido, não mexe
-            }
-        });
 
-        offerRow.appendChild(offerInput);
-        offerField.appendChild(offerLabel);
-        offerField.appendChild(offerRow);
+                // Atualiza campaignTitle dentro do JSON Final
+                try {
+                    const obj = JSON.parse(jsonFinalArea.value || "{}");
 
+                    if (value) {
+                        // quando tiver ID: campaignTitle = ID
+                        obj.campaignTitle = value;
+                    } else {
+                        // se apagar o ID: volta pro placeholder
+                        obj.campaignTitle = "numero_do_offerID";
+                    }
+
+                    const updated = JSON.stringify(obj, null, 2);
+                    jsonFinalArea.value = updated;
+
+                    if (tData && tData.banners && tData.banners[index]) {
+                        tData.banners[index].jsonFinal = updated;
+                        saveState();
+                    }
+                } catch (e) {
+                    // se o JSON estiver inválido, não mexe
+                }
+            });
+
+            offerRow.appendChild(offerInput);
+            offerField.appendChild(offerLabel);
+            offerField.appendChild(offerRow);
 
             // Ordem: JSON original -> Número do Offer ID -> JSON Final
             block.appendChild(jsonField);
