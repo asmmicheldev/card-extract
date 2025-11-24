@@ -55,7 +55,9 @@ function setTextValue(id, value) {
 function autoResizeTextareas(tabId) {
     const content = document.getElementById("content_" + tabId);
     if (!content) return;
-    const textareas = content.querySelectorAll("textarea.readonly-multiline");
+    const textareas = content.querySelectorAll(
+        "textarea.readonly-multiline, textarea.json-final"
+    );
     textareas.forEach(t => {
         t.style.height = "auto";
         t.style.height = (t.scrollHeight + 4) + "px";
@@ -825,6 +827,7 @@ async function fetchAccessibilityText(imageUrl, textarea, tabId) {
     }
 
 
+
 function renderBannerList(tabId, banners) {
     const container = document.getElementById("banner_container_" + tabId);
     if (!container) return;
@@ -1125,22 +1128,99 @@ function renderBannerList(tabId, banners) {
             block.appendChild(previewBlock);
         }
 
-        // ========== JSON GERADO (fica DEPOIS do botão) ==========
-        if (b.json) {
-            const jsonField = document.createElement("div");
-            jsonField.className = "field field-full";
+// ========== JSON GERADO (original) + JSON FINAL ==========
+if (b.json) {
+    // ---- JSON gerado (original) em toggle ----
+    const jsonField = document.createElement("div");
+    jsonField.className = "field field-full";
 
-            const jsonLabel = document.createElement("label");
-            jsonLabel.textContent = "JSON gerado";
+    const details = document.createElement("details");
+    details.className = "json-original-toggle";
 
-            const pre = document.createElement("pre");
-            pre.className = "code-block";
-            pre.textContent = b.json || "";
+    const summary = document.createElement("summary");
+    summary.textContent = "JSON gerado (original)";
 
-            jsonField.appendChild(jsonLabel);
-            jsonField.appendChild(pre);
-            block.appendChild(jsonField);
+    const pre = document.createElement("pre");
+    pre.className = "code-block";
+    pre.textContent = b.json || "";
+
+    details.appendChild(summary);
+    details.appendChild(pre);
+    jsonField.appendChild(details);
+    block.appendChild(jsonField);
+
+    // ---- JSON Final (EDITÁVEL) ----
+    const jsonFinalField = document.createElement("div");
+    jsonFinalField.className = "field field-full";
+
+    const jsonFinalLabel = document.createElement("label");
+    jsonFinalLabel.textContent = "JSON Final";
+
+    const jsonFinalArea = document.createElement("textarea");
+    jsonFinalArea.className = "json-final";
+    jsonFinalArea.style.width = "100%";
+    jsonFinalArea.style.minHeight = "220px";
+    jsonFinalArea.style.fontFamily = "monospace";
+    jsonFinalArea.rows = 10;
+    jsonFinalArea.spellcheck = false;
+
+    // 1) JSON final padrão gerado a partir do original
+    let defaultFinalJson = "";
+    try {
+        const obj = JSON.parse(b.json);
+
+        // se campaignTitle/Subtitle/messageButton tiverem "fullscreen"
+        if (typeof obj.campaignTitle === "string" &&
+            obj.campaignTitle.toLowerCase().includes("fullscreen")) {
+            obj.campaignTitle = "numero_do_offerID";
         }
+
+        obj.campaignSubtitle = "";
+        obj.messageButton   = "";
+
+        // campaignPosition = ContentZone/CampaignPosition
+        if (b.contentZone) {
+            obj.campaignPosition = b.contentZone;
+        }
+
+        // placeholder para o texto da imagem
+        obj.accessibilityText = "titulo_da_imageUrl";
+
+        defaultFinalJson = JSON.stringify(obj, null, 2);
+    } catch (e) {
+        // se der erro, pelo menos mostra o original
+        defaultFinalJson = b.json;
+    }
+
+    // 2) Se já existir JSON Final salvo no estado, usa ele
+    const tabData = tabsState.tabs[tabId];
+    let stored = null;
+    if (tabData && tabData.banners && tabData.banners[index]) {
+        stored = tabData.banners[index].jsonFinal || null;
+    }
+
+    jsonFinalArea.value = stored || defaultFinalJson;
+
+    // Se ainda não tinha jsonFinal nesse banner, salva o padrão
+    if (tabData && tabData.banners && tabData.banners[index] && !tabData.banners[index].jsonFinal) {
+        tabData.banners[index].jsonFinal = jsonFinalArea.value;
+        saveState();
+    }
+
+    // 3) Sempre que você editar, salva no localStorage
+    jsonFinalArea.addEventListener("input", () => {
+        const tData = tabsState.tabs[tabId];
+        if (tData && tData.banners && tData.banners[index]) {
+            tData.banners[index].jsonFinal = jsonFinalArea.value;
+            saveState();
+        }
+    });
+
+    jsonFinalField.appendChild(jsonFinalLabel);
+    jsonFinalField.appendChild(jsonFinalArea);
+    block.appendChild(jsonFinalField);
+}
+
 
         body.appendChild(block);
         item.appendChild(header);
@@ -1464,15 +1544,29 @@ function processCard(tabId, texto) {
     const linhas = texto.split(/\r?\n/);
 
     const titulo = parseTitulo(linhas);
-    const info = parseInformacoesGerais(linhas);
-    const dados = parseDados(linhas);
-    const comm = parseCommunications(linhas);
+    const info   = parseInformacoesGerais(linhas);
+    const dados  = parseDados(linhas);
+    const comm   = parseCommunications(linhas);
 
-    const pushes = comm.pushes;
+    const pushes  = comm.pushes;
     const banners = comm.banners;
-    const mkt = comm.mktScreen;
+    const mkt     = comm.mktScreen;
 
-    // Título do card (inputs copiáveis)
+    // pega estado atual da aba (se existir)
+    const tabData = tabsState.tabs[tabId] || {};
+
+    // ===== PRESERVAR accText / jsonFinal DOS BANNERS ANTIGOS =====
+    const oldBanners = tabData.banners || [];
+    const mergedBanners = banners.map((b, idx) => {
+        const old = oldBanners[idx] || {};
+        return {
+            ...b,
+            accText:  old.accText  || "",
+            jsonFinal: old.jsonFinal || ""
+        };
+    });
+
+    // ===== ATUALIZA CAMPOS DE TELA =====
     setFieldValue("nome_", tabId, titulo.nome);
     setFieldValue("base_", tabId, dados.base);
 
@@ -1481,23 +1575,14 @@ function processCard(tabId, texto) {
         tabTitle.textContent = titulo.nome || "Card";
     }
 
-    // Informações gerais (textos fora de readonly)
     setTextValue("desc_" + tabId, titulo.descricao);
     setTextValue("solicitanteText_" + tabId, info.solicitante);
     setTextValue("descCamp_" + tabId, info.descCamp);
     setTextValue("obsText_" + tabId, dados.observacao);
 
     renderCanais(tabId, info.canais);
-    // tempo existe, mas não exibimos (fica só no estado)
 
-    // Push / Banner / Mkt
-    renderPushList(tabId, pushes);
-    renderBannerList(tabId, banners);
-    renderMktScreenView(tabId, mkt);
-
-    // Atualiza estado
-    const tabData = tabsState.tabs[tabId];
-
+    // ===== ATUALIZA ESTADO =====
     tabData.title       = titulo.nome || "Card";
     tabData.input       = texto;
     tabData.nome        = titulo.nome;
@@ -1514,12 +1599,20 @@ function processCard(tabId, texto) {
     tabData.observacao  = dados.observacao;
 
     tabData.pushes      = pushes;
-    tabData.banners     = banners;
+    tabData.banners     = mergedBanners;
     tabData.mktScreen   = mkt;
+
+    tabsState.tabs[tabId] = tabData;
+
+    // ===== RENDER COM DADOS MESCLADOS =====
+    renderPushList(tabId, pushes);
+    renderBannerList(tabId, mergedBanners);
+    renderMktScreenView(tabId, mkt);
 
     autoResizeTextareas(tabId);
     saveState();
 }
+
 
 function handlePaste(event) {
     const ta = event.target;
