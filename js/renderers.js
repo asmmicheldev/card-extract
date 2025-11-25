@@ -216,9 +216,7 @@ export function renderPushList(tabId, pushes) {
           const diffMs = current.getTime() - lastDate.getTime();
           const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
           if (diffDays > 0) {
-            decoratedDate = `${p.dataInicio} (wait ${diffDays} dia${
-              diffDays > 1 ? "s" : ""
-            })`;
+            decoratedDate = `${p.dataInicio} (wait ${diffDays} dia${diffDays > 1 ? "s" : ""})`;
           } else {
             decoratedDate = p.dataInicio;
           }
@@ -303,7 +301,8 @@ export function renderPushList(tabId, pushes) {
     const rowTitulos = document.createElement("div");
     rowTitulos.className = "fields-grid-3";
 
-    function addInputFieldRow(labelText, value) {
+    // helper para Título/Subtítulo/URL editáveis
+    function addInputFieldRow(labelText, value, fieldKey, editable = false) {
       const field = document.createElement("div");
       field.className = "field";
 
@@ -312,18 +311,37 @@ export function renderPushList(tabId, pushes) {
 
       const input = document.createElement("input");
       input.type = "text";
-      input.className = "readonly";
-      input.readOnly = true;
+
+      if (editable) {
+        input.className = "input";
+        input.readOnly = false;
+      } else {
+        input.className = "readonly";
+        input.readOnly = true;
+      }
+
       input.value = value || "";
+
+      if (editable && fieldKey) {
+        input.addEventListener("input", () => {
+          const tabData = tabsState.tabs[tabId];
+          if (!tabData || !tabData.pushes || !tabData.pushes[index]) return;
+          tabData.pushes[index][fieldKey] = input.value;
+          // mantém objeto local alinhado também
+          p[fieldKey] = input.value;
+          saveState();
+        });
+      }
 
       field.appendChild(label);
       field.appendChild(input);
       rowTitulos.appendChild(field);
     }
 
-    addInputFieldRow("Título", p.titulo);
-    addInputFieldRow("Subtítulo", p.subtitulo);
-    addInputFieldRow("URL", p.url);
+    // agora esses 3 são editáveis
+    addInputFieldRow("Título", p.titulo, "titulo", true);
+    addInputFieldRow("Subtítulo", p.subtitulo, "subtitulo", true);
+    addInputFieldRow("URL", p.url, "url", true);
 
     block.appendChild(grid);
     block.appendChild(rowTitulos);
@@ -334,6 +352,7 @@ export function renderPushList(tabId, pushes) {
     container.appendChild(item);
   });
 }
+
 
 // ===================== RENDER BANNERS =====================
 
@@ -383,8 +402,10 @@ export function renderBannerList(tabId, banners) {
 
     let accTextarea = null;
     let jsonFinalArea = null;
+    let img = null; // vamos setar depois no preview, mas já existe aqui
 
-    function addInputField(labelText, value, full = false) {
+    // helper genérico de input, com opção de ser editável
+    function addInputField(labelText, value, full = false, fieldKey = null, editable = false) {
       const field = document.createElement("div");
       field.className = "field";
       if (full) field.classList.add("field-full");
@@ -394,9 +415,32 @@ export function renderBannerList(tabId, banners) {
 
       const input = document.createElement("input");
       input.type = "text";
-      input.className = "readonly";
-      input.readOnly = true;
+
+      if (editable) {
+        input.className = "input";
+        input.readOnly = false;
+      } else {
+        input.className = "readonly";
+        input.readOnly = true;
+      }
+
       input.value = value || "";
+
+      if (editable && fieldKey) {
+        input.addEventListener("input", () => {
+          const tabData = tabsState.tabs[tabId];
+          if (!tabData || !tabData.banners || !tabData.banners[index]) return;
+
+          tabData.banners[index][fieldKey] = input.value;
+          b[fieldKey] = input.value;
+
+          if (fieldKey === "imagem" && img) {
+            img.src = input.value.trim();
+          }
+
+          saveState();
+        });
+      }
 
       field.appendChild(label);
       field.appendChild(input);
@@ -448,7 +492,7 @@ export function renderBannerList(tabId, banners) {
     infoTop.appendChild(rowDates);
     block.appendChild(infoTop);
 
-    // Título / Sub / CTA
+    // Título / Sub / CTA (somente display)
     if (b.titulo || b.subtitulo || b.cta) {
       const infoTit = document.createElement("div");
       infoTit.className = "info-group";
@@ -544,9 +588,9 @@ export function renderBannerList(tabId, banners) {
     }
 
     // grid campos
-    addInputField("Nome Experiência", b.nomeExp, true);
-    addInputField("Channel", b.channel, false);
-    addInputField("Imagem (URL)", b.imagem, true);
+    addInputField("Nome Experiência", b.nomeExp, true);                 // readonly
+    addInputField("Channel", b.channel, false, "channel", true);       // EDITÁVEL
+    addInputField("Imagem (URL)", b.imagem, true, "imagem", true);     // EDITÁVEL
 
     // Accessibility Text
     const accField = document.createElement("div");
@@ -607,11 +651,17 @@ export function renderBannerList(tabId, banners) {
     accBtn.className = "btn-secondary";
 
     accBtn.addEventListener("click", () => {
-      if (!b.imagem) {
+      const tabData = tabsState.tabs[tabId];
+      const bannersArr = (tabData && tabData.banners) || [];
+      const currentBanner = bannersArr[index] || b;
+
+      const imgUrl = currentBanner.imagem || b.imagem;
+
+      if (!imgUrl) {
         accTextarea.value = "Nenhuma URL de imagem.";
         return;
       }
-      fetchAccessibilityText(b.imagem, accTextarea, tabId);
+      fetchAccessibilityText(imgUrl, accTextarea, tabId);
     });
 
     accRow.appendChild(accTextarea);
@@ -632,7 +682,7 @@ export function renderBannerList(tabId, banners) {
       btn.textContent = "Mostrar imagem";
       btn.className = "btn-secondary";
 
-      const img = document.createElement("img");
+      img = document.createElement("img");
       img.src = b.imagem;
       img.alt = "";
       img.style.display = "none";
@@ -811,6 +861,7 @@ export function renderBannerList(tabId, banners) {
   });
 }
 
+
 // ===================== RENDER MKT SCREEN =====================
 
 export function renderMktScreenView(tabId, mkt) {
@@ -834,7 +885,7 @@ export function renderMktScreenView(tabId, mkt) {
   const grid = document.createElement("div");
   grid.className = "fields-grid";
 
-  function addInputField(labelText, value, full = false) {
+  function addInputField(labelText, value, full = false, fieldKey = null, editable = false) {
     const field = document.createElement("div");
     field.className = "field";
     if (full) field.classList.add("field-full");
@@ -844,17 +895,36 @@ export function renderMktScreenView(tabId, mkt) {
 
     const input = document.createElement("input");
     input.type = "text";
-    input.className = "readonly";
-    input.readOnly = true;
+
+    if (editable) {
+      input.className = "input";
+      input.readOnly = false;
+    } else {
+      input.className = "readonly";
+      input.readOnly = true;
+    }
+
     input.value = value || "";
+
+    if (editable && fieldKey) {
+      input.addEventListener("input", () => {
+        const tabData = tabsState.tabs[tabId];
+        if (!tabData || !tabData.mktScreen) return;
+
+        tabData.mktScreen[fieldKey] = input.value;
+        mkt[fieldKey] = input.value;
+        saveState();
+      });
+    }
 
     field.appendChild(label);
     field.appendChild(input);
     grid.appendChild(field);
   }
 
-  addInputField("Channel", mkt.channel || "", true);
-  addInputField("URL Marketing Screen", mkt.url || "", true);
+  // agora Channel e URL são editáveis
+  addInputField("Channel", mkt.channel || "", true, "channel", true);
+  addInputField("URL Marketing Screen", mkt.url || "", true, "url", true);
 
   geral.appendChild(grid);
 
@@ -876,15 +946,15 @@ export function renderMktScreenView(tabId, mkt) {
     const visible = qrImg.style.display === "block";
 
     if (!visible) {
-      const link = (mkt.url || "").trim();
+      const tabData = tabsState.tabs[tabId];
+      const currentMkt = tabData?.mktScreen || mkt;
+      const link = (currentMkt.url || "").trim();
       if (!link) {
         alert("URL Marketing Screen vazia. Copie/cole o deeplink no card primeiro.");
         return;
       }
 
-      if (!qrImg.src) {
-        qrImg.src = buildQrCodeUrl(link);
-      }
+      qrImg.src = buildQrCodeUrl(link);
     }
 
     qrImg.style.display = visible ? "none" : "block";
@@ -974,24 +1044,43 @@ export function renderMktScreenView(tabId, mkt) {
         gridBloco.appendChild(field);
       }
 
-      function addCodeFieldBloco(labelText, value) {
+      function addCodeFieldBloco(labelText, value, blocoIndex) {
         const field = document.createElement("div");
         field.className = "field field-full";
 
         const label = document.createElement("label");
         label.textContent = labelText;
 
-        const pre = document.createElement("pre");
-        pre.className = "code-block";
-        pre.textContent = value || "";
+        const ta = document.createElement("textarea");
+        ta.className = "json-final";   // reaproveita estilo de JSON Final
+        ta.rows = 8;
+        ta.spellcheck = false;
+        ta.value = value || "";
+
+        ta.addEventListener("input", () => {
+          const tabData = tabsState.tabs[tabId];
+          if (
+            !tabData ||
+            !tabData.mktScreen ||
+            !Array.isArray(tabData.mktScreen.blocos) ||
+            !tabData.mktScreen.blocos[blocoIndex]
+          ) {
+            return;
+          }
+
+          tabData.mktScreen.blocos[blocoIndex].json = ta.value;
+          b.json = ta.value;
+          saveState();
+        });
 
         field.appendChild(label);
-        field.appendChild(pre);
+        field.appendChild(ta);
         gridBloco.appendChild(field);
       }
 
       addInputFieldBloco("Nome Experiência", b.nomeExp, true);
-      addCodeFieldBloco("JSON do bloco", b.json);
+      // JSON do bloco agora é editável
+      addCodeFieldBloco("JSON do bloco", b.json, index);
 
       block.appendChild(gridBloco);
       body.appendChild(block);
@@ -1002,6 +1091,7 @@ export function renderMktScreenView(tabId, mkt) {
     });
   }
 }
+
 
 /* ====================================================================== */
 /* ====================== PROCESSOS / FAROL / CONCLUSÃO ================= */

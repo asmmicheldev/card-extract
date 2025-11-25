@@ -35,7 +35,7 @@ function setTextValue(id, value) {
 function ensureProcessStructures(data) {
   if (!data.processFlags) data.processFlags = {};
   if (!data.processChecks) data.processChecks = {};
-  if (!data.processMeta) data.processMeta = {}; // << NOVO
+  if (!data.processMeta) data.processMeta = {};
 }
 
 // ===================== UI: CRIAÇÃO DE ABAS =====================
@@ -81,12 +81,42 @@ function createTabFromState(tabId, data) {
   content.id = "content_" + tabId;
 
   content.innerHTML = `
-    <h2>Card Input</h2>
-    <div class="field field-full">
-      <textarea class="card-input"
-                rows="1"
-                oninput="processCard('${tabId}', this.value)"
-                onpaste="handlePaste(event)">${data.input || ""}</textarea>
+    <h2>Card</h2>
+    <div class="card-row">
+      <div class="field card-col">
+        <label>Card Original</label>
+        <textarea
+          id="cardOriginal_${tabId}"
+          class="card-input"
+          rows="1"
+          oninput="processCard('${tabId}', this.value)"
+          onpaste="handlePaste(event)">${data.input || ""}</textarea>
+      </div>
+
+      <div class="field card-col">
+        <label>Card Extract</label>
+        <div class="card-extract-row">
+          <textarea
+            id="cardExtract_${tabId}"
+            class="card-input"
+            rows="1"
+            oninput="handleCardExtractChange('${tabId}', this.value)">${data.cardExtract || ""}</textarea>
+          <div class="card-extract-buttons">
+            <button
+              type="button"
+              class="btn-secondary"
+              onclick="exportCardState('${tabId}')">
+              Export
+            </button>
+            <button
+              type="button"
+              class="btn-secondary"
+              onclick="importCardState('${tabId}')">
+              Import
+            </button>
+          </div>
+        </div>
+      </div>
     </div>
 
     <h2>Anotações</h2>
@@ -151,7 +181,12 @@ function createTabFromState(tabId, data) {
 
       <div class="field">
         <label>Base</label>
-        <input id="base_${tabId}" class="readonly" type="text" readonly value="${data.base || ""}">
+        <input
+          id="base_${tabId}"
+          class="input"
+          type="text"
+          value="${data.base || ""}"
+          oninput="handleBaseChange('${tabId}', this.value)">
       </div>
     </div>
 
@@ -218,6 +253,7 @@ function createTab() {
   tabsState.tabs[tabId] = {
     title: "Card",
     input: "",
+    cardExtract: "",
     nome: "",
     descricao: "",
     cardUrl: "",
@@ -235,7 +271,7 @@ function createTab() {
     mktScreen: null,
     processFlags: {},
     processChecks: {},
-    processMeta: {}        // << NOVO
+    processMeta: {}
   };
 
   createTabFromState(tabId, tabsState.tabs[tabId]);
@@ -345,6 +381,101 @@ function handleNotesChange(tabId, value) {
   saveState();
 }
 
+function handleBaseChange(tabId, value) {
+  const tabData = tabsState.tabs[tabId] || {};
+  tabData.base = value;
+  tabsState.tabs[tabId] = tabData;
+  // Farol / conclusão usam base -> re-render
+  renderChannelProcesses(tabId, tabData);
+  saveState();
+}
+
+// ===================== CARD EXTRACT (export / import) =====================
+
+function handleCardExtractChange(tabId, value) {
+  const tabData = tabsState.tabs[tabId] || {};
+  tabData.cardExtract = value;
+  tabsState.tabs[tabId] = tabData;
+  saveState();
+}
+
+function exportCardState(tabId) {
+  const tabData = tabsState.tabs[tabId];
+  if (!tabData) return;
+
+  const text = JSON.stringify(tabData, null, 2);
+  const ta = document.getElementById("cardExtract_" + tabId);
+  if (ta) {
+    ta.value = text;
+  }
+
+  tabData.cardExtract = text;
+  tabsState.tabs[tabId] = tabData;
+  saveState();
+}
+
+function importCardState(tabId) {
+  const ta = document.getElementById("cardExtract_" + tabId);
+  if (!ta) return;
+
+  const raw = ta.value || "";
+  if (!raw.trim()) {
+    alert("O campo 'Card Extract' está vazio.");
+    return;
+  }
+
+  let obj;
+  try {
+    obj = JSON.parse(raw);
+  } catch (e) {
+    alert("O conteúdo do 'Card Extract' não é um JSON válido.");
+    return;
+  }
+
+  // garante estruturas mínimas
+  ensureProcessStructures(obj);
+  if (!Array.isArray(obj.pushes)) obj.pushes = [];
+  if (!Array.isArray(obj.banners)) obj.banners = [];
+  if (typeof obj.mktScreen === "undefined") obj.mktScreen = null;
+
+  obj.cardExtract = raw;
+
+  tabsState.tabs[tabId] = obj;
+
+  // Atualiza campos principais
+  const originalTa = document.getElementById("cardOriginal_" + tabId);
+  if (originalTa) {
+    originalTa.value = obj.input || "";
+  }
+
+  const notesTa = document.getElementById("notes_" + tabId);
+  if (notesTa) {
+    notesTa.value = obj.anotacoes || "";
+  }
+
+  setFieldValue("nome_", tabId, obj.nome || "");
+  setFieldValue("base_", tabId, obj.base || "");
+
+  const tabTitle = document.querySelector(`#${tabId} .tab-title`);
+  if (tabTitle) {
+    tabTitle.textContent = obj.title || obj.nome || "Card";
+  }
+
+  setTextValue("desc_" + tabId, obj.descricao || "");
+  setTextValue("solicitanteText_" + tabId, obj.solicitante || "");
+  setTextValue("descCamp_" + tabId, obj.descCamp || "");
+  setTextValue("obsText_" + tabId, obj.observacao || "");
+
+  renderCanais(tabId, obj.canais || "");
+  renderPushList(tabId, obj.pushes || []);
+  renderBannerList(tabId, obj.banners || []);
+  renderMktScreenView(tabId, obj.mktScreen || null);
+  renderChannelProcesses(tabId, obj);
+
+  autoResizeTextareas(tabId);
+  saveState();
+}
+
 function handlePaste(event) {
   const ta = event.target;
   setTimeout(() => {
@@ -421,3 +552,7 @@ document.getElementById("add-tab").onclick = createTab;
 window.processCard = processCard;
 window.handlePaste = handlePaste;
 window.handleNotesChange = handleNotesChange;
+window.handleCardExtractChange = handleCardExtractChange;
+window.exportCardState = exportCardState;
+window.importCardState = importCardState;
+window.handleBaseChange = handleBaseChange;
