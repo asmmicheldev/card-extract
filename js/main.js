@@ -94,8 +94,7 @@ function createTabFromState(tabId, data) {
       <textarea
         id="notes_${tabId}"
         class="readonly-multiline notes-input"
-        rows="5"
-        placeholder="Use este espaço para anotar pendências, combinados com o solicitante, links faltando, etc."
+        rows="3"
         oninput="handleNotesChange('${tabId}', this.value)">${data.anotacoes || ""}</textarea>
     </div>
 
@@ -173,7 +172,7 @@ function createTabFromState(tabId, data) {
     <!-- Banner pai -->
     <div class="accordion">
       <div class="accordion-header" data-accordion-target="bannerWrap_${tabId}">
-        <span class="accordion-title">Banners</span>
+        <span class="accordion-title">Banner</span>
         <span class="accordion-arrow">▸</span>
       </div>
       <div id="bannerWrap_${tabId}" class="accordion-body">

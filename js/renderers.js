@@ -1054,6 +1054,7 @@ function applyToggleVisual(group, on) {
 
 /* ---- Processos por canal ---- */
 
+
 function renderPushProcess(tabId, tabData) {
   const container = document.getElementById("push_process_" + tabId);
   if (!container) return;
@@ -1068,6 +1069,11 @@ function renderPushProcess(tabId, tabData) {
 
   const nomeCard = tabData.nome || "Sem nome";
   const cardUrl = tabData.cardUrl || "";
+
+  // pega email do solicitante e calcula hash
+  const solicitanteEmail =
+    (tabData.solicitanteEmail || tabData.solicitante || "").trim();
+  const solicitanteHash = getHashForSolicitante(solicitanteEmail);
 
   // --- flags para controlar a fila ---
   const testsApproved = getFlag(tabData, "pushTestsApproved");
@@ -1087,7 +1093,7 @@ function renderPushProcess(tabId, tabData) {
   accItem.className = "accordion-item";
 
   const header = document.createElement("div");
-  header.className = "accordion-header";
+  header.className = "accordion-header accordion-header-small";
   header.dataset.accordionTarget = `pushProcessWrap_${tabId}`;
 
   const titleSpan = document.createElement("span");
@@ -1110,10 +1116,8 @@ function renderPushProcess(tabId, tabData) {
 
   section.innerHTML = `
     <div class="process-section">
-      <div class="process-section-title">Testes, QA e Envio/Ativação</div>
 
       <div class="field field-full">
-        <label>Início dos Testes</label>
         <div class="info-group">
           <div class="info-row">
             <span class="info-label">Card:</span>
@@ -1125,6 +1129,17 @@ function renderPushProcess(tabId, tabData) {
               }
             </span>
           </div>
+
+          ${
+            solicitanteHash
+              ? `
+          <div class="info-row">
+            <span class="info-label">Hash do solicitante:</span>
+            <span class="info-value">${solicitanteHash}</span>
+          </div>
+          `
+              : ""
+          }
         </div>
       </div>
 
@@ -1163,12 +1178,14 @@ function renderPushProcess(tabId, tabData) {
       <!-- Pronto para QA? só aparece se testes = SIM + todas checks -->
       <div class="field field-full" style="${showProntoQA ? "" : "display:none;"}">
         <label>Pronto para QA?</label>
-        <div class="toggle-group" data-flag="pushReadyQA">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="process-status" data-flag-text="pushReadyQA">
-          PRONTO PARA QA!
+        <div class="process-row">
+          <div class="toggle-group" data-flag="pushReadyQA">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="pushReadyQA">
+            PRONTO PARA QA!
+          </div>
         </div>
       </div>
 
@@ -1184,24 +1201,28 @@ function renderPushProcess(tabId, tabData) {
       <!-- Ativação Aprovada? só aparece se QA Aprovado = SIM -->
       <div class="field field-full" style="${showAtivacao ? "" : "display:none;"}">
         <label>Ativação Aprovada?</label>
-        <div class="toggle-group" data-flag="pushAtivacaoApproved">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="process-status" data-flag-text="pushAtivacaoApproved">
-          ENVIAR!
+        <div class="process-row">
+          <div class="toggle-group" data-flag="pushAtivacaoApproved">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="pushAtivacaoApproved">
+            ENVIAR!
+          </div>
         </div>
       </div>
 
       <!-- Mensagem grupo só aparece se Ativação = SIM -->
       <div class="field field-full" style="${showMsgGrupo ? "" : "display:none;"}">
         <label>Mensagem no grupo de confirmação?</label>
-        <div class="toggle-group" data-flag="pushMsgGrupo">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="process-status" data-flag-text="pushMsgGrupo">
-          CANAL CONCLUIDO!
+        <div class="process-row">
+          <div class="toggle-group" data-flag="pushMsgGrupo">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="pushMsgGrupo">
+            CANAL CONCLUIDO!
+          </div>
         </div>
       </div>
     </div>
@@ -1212,6 +1233,8 @@ function renderPushProcess(tabId, tabData) {
   accItem.appendChild(body);
   container.appendChild(accItem);
 }
+
+
 
 function renderBannerProcessProcess(tabId, tabData) {
   const container = document.getElementById("banner_process_" + tabId);
@@ -1226,10 +1249,6 @@ function renderBannerProcessProcess(tabId, tabData) {
 
   const nomeCard = tabData.nome || "Sem nome";
   const cardUrl = tabData.cardUrl || "";
-
-  // prioridade de teste carregada do estado (default 2000)
-  const priority =
-    (tabData.processMeta && tabData.processMeta.bannerTestPriority) || "2000";
 
   const testsApproved = getFlag(tabData, "bannerTestsApproved");
   const checksOk = areAllChecksOn(tabData, "banner", [
@@ -1250,7 +1269,7 @@ function renderBannerProcessProcess(tabId, tabData) {
   accItem.className = "accordion-item";
 
   const header = document.createElement("div");
-  header.className = "accordion-header";
+  header.className = "accordion-header accordion-header-small";
   header.dataset.accordionTarget = `bannerProcessWrap_${tabId}`;
 
   const titleSpan = document.createElement("span");
@@ -1273,10 +1292,8 @@ function renderBannerProcessProcess(tabId, tabData) {
 
   section.innerHTML = `
     <div class="process-section">
-      <div class="process-section-title">Testes, QA e Envio/Ativação</div>
 
       <div class="field field-full">
-        <label>Início dos Testes</label>
         <div class="info-group">
           <div class="info-row">
             <span class="info-label">Card:</span>
@@ -1287,17 +1304,6 @@ function renderBannerProcessProcess(tabId, tabData) {
                   : nomeCard
               }
             </span>
-          </div>
-          <div class="info-row">
-            <span class="info-label">Prioridade teste</span>
-            <span class="info-value">
-              <input type="text"
-                     class="input input-inline"
-                     data-banner-priority="true"
-                     value="${priority}">
-            </span>
-            <span class="info-label" style="margin-left:12px;">Obs:</span>
-            <span class="info-value">Campo editável direto na Adobe</span>
           </div>
         </div>
       </div>
@@ -1344,12 +1350,14 @@ function renderBannerProcessProcess(tabId, tabData) {
 
       <div class="field field-full" style="${showProntoQA ? "" : "display:none;"}">
         <label>Pronto para QA?</label>
-        <div class="toggle-group" data-flag="bannerReadyQA">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="process-status" data-flag-text="bannerReadyQA">
-          PRONTO PARA QA!
+        <div class="process-row">
+          <div class="toggle-group" data-flag="bannerReadyQA">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="bannerReadyQA">
+            PRONTO PARA QA!
+          </div>
         </div>
       </div>
 
@@ -1363,44 +1371,39 @@ function renderBannerProcessProcess(tabId, tabData) {
 
       <div class="field field-full" style="${showAtivacao ? "" : "display:none;"}">
         <label>Ativação Aprovada?</label>
-        <div class="toggle-group" data-flag="bannerAtivacaoApproved">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="process-status" data-flag-text="bannerAtivacaoApproved">
-          ATIVAR!
+        <div class="process-row">
+          <div class="toggle-group" data-flag="bannerAtivacaoApproved">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="bannerAtivacaoApproved">
+            ATIVAR!
+          </div>
         </div>
       </div>
 
       <div class="field field-full" style="${showMsgGrupo ? "" : "display:none;"}">
         <label>Mensagem no grupo de confirmação?</label>
-        <div class="toggle-group" data-flag="bannerMsgGrupo">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="process-status" data-flag-text="bannerMsgGrupo">
-          CANAL CONCLUIDO!
+        <div class="process-row">
+          <div class="toggle-group" data-flag="bannerMsgGrupo">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="bannerMsgGrupo">
+            CANAL CONCLUIDO!
+          </div>
         </div>
       </div>
     </div>
   `;
-
-  // handler do campo de prioridade
-  const priorityInput = section.querySelector('input[data-banner-priority="true"]');
-  if (priorityInput) {
-    priorityInput.addEventListener("input", () => {
-      const tData = tabsState.tabs[tabId];
-      if (!tData.processMeta) tData.processMeta = {};
-      tData.processMeta.bannerTestPriority = priorityInput.value.trim() || "2000";
-      saveState();
-    });
-  }
 
   body.appendChild(section);
   accItem.appendChild(header);
   accItem.appendChild(body);
   container.appendChild(accItem);
 }
+
+
 
 function renderMktProcess(tabId, tabData) {
   const container = document.getElementById("mkt_process_" + tabId);
@@ -1427,7 +1430,7 @@ function renderMktProcess(tabId, tabData) {
   accItem.className = "accordion-item";
 
   const header = document.createElement("div");
-  header.className = "accordion-header";
+  header.className = "accordion-header accordion-header-small";
   header.dataset.accordionTarget = `mktProcessWrap_${tabId}`;
 
   const titleSpan = document.createElement("span");
@@ -1450,10 +1453,8 @@ function renderMktProcess(tabId, tabData) {
 
   section.innerHTML = `
     <div class="process-section">
-      <div class="process-section-title">Testes, QA e Envio/Ativação</div>
 
       <div class="field field-full">
-        <label>Início dos Testes</label>
         <div class="info-group">
           <div class="info-row">
             <span class="info-label">Card:</span>
@@ -1485,12 +1486,14 @@ function renderMktProcess(tabId, tabData) {
 
       <div class="field field-full" style="${showProntoQA ? "" : "display:none;"}">
         <label>Pronto para QA?</label>
-        <div class="toggle-group" data-flag="mktReadyQA">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="process-status" data-flag-text="mktReadyQA">
-          PRONTO PARA QA!
+        <div class="process-row">
+          <div class="toggle-group" data-flag="mktReadyQA">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="mktReadyQA">
+            PRONTO PARA QA!
+          </div>
         </div>
       </div>
 
@@ -1504,23 +1507,27 @@ function renderMktProcess(tabId, tabData) {
 
       <div class="field field-full" style="${showAtivacao ? "" : "display:none;"}">
         <label>Ativação Aprovada?</label>
-        <div class="toggle-group" data-flag="mktAtivacaoApproved">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="process-status" data-flag-text="mktAtivacaoApproved">
-          ATIVAR!
+        <div class="process-row">
+          <div class="toggle-group" data-flag="mktAtivacaoApproved">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="mktAtivacaoApproved">
+            ATIVAR!
+          </div>
         </div>
       </div>
 
       <div class="field field-full" style="${showMsgGrupo ? "" : "display:none;"}">
         <label>Mensagem no grupo de confirmação?</label>
-        <div class="toggle-group" data-flag="mktMsgGrupo">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="process-status" data-flag-text="mktMsgGrupo">
-          CANAL CONCLUIDO!
+        <div class="process-row">
+          <div class="toggle-group" data-flag="mktMsgGrupo">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="mktMsgGrupo">
+            CANAL CONCLUIDO!
+          </div>
         </div>
       </div>
     </div>
@@ -1531,6 +1538,8 @@ function renderMktProcess(tabId, tabData) {
   accItem.appendChild(body);
   container.appendChild(accItem);
 }
+
+
 
 /* ---- FAROL / CONCLUSÃO ---- */
 
@@ -1694,12 +1703,14 @@ function renderFarolConclusao(tabId, tabData) {
       section.innerHTML = `
         <div class="field field-full">
           <label>Remaining Work e Owners alterados?</label>
-          <div class="toggle-group" data-flag="cardRemainingWorkOk">
-            <button type="button" class="toggle-chip no">Não</button>
-            <button type="button" class="toggle-chip yes">Sim</button>
-          </div>
-          <div class="process-status" data-flag-text="cardRemainingWorkOk">
-            CARD CONCLUIDO!
+          <div class="process-row">
+            <div class="toggle-group" data-flag="cardRemainingWorkOk">
+              <button type="button" class="toggle-chip no">Não</button>
+              <button type="button" class="toggle-chip yes">Sim</button>
+            </div>
+            <div class="process-status" data-flag-text="cardRemainingWorkOk">
+              CARD CONCLUIDO!
+            </div>
           </div>
         </div>
       `;
