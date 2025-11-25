@@ -84,6 +84,12 @@ body {
     border-color: #444;
 }
 
+/* input pequeno inline (prioridade teste) */
+.input-inline {
+    width: 80px;
+    display: inline-block;
+}
+
 /* Textareas longos (observações, JSON, etc) - base igual pros dois */
 .readonly-multiline,
 .json-final {
@@ -409,4 +415,87 @@ button {
     width: 100%;
     resize: vertical;      /* se quiser permitir aumentar/diminuir */
     min-height: 60px;      /* garante um tamanho confortável */
+}
+
+/* === PROCESSOS (Testes / QA / Farol / Conclusão) === */
+
+.process-section-title {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 4px 0 8px;
+}
+
+/* agora começa escondido */
+.process-status {
+    margin-top: 6px;
+    padding-top: 3px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #22c55e; /* verde */
+    display: none;
+}
+
+/* checklist de itens (Testes Aprovados?) */
+.checklist {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px 12px;
+    margin-top: 4px;
+}
+
+.check-item {
+    font-size: 13px;
+    color: #dddddd;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.check-item input[type="checkbox"] {
+    accent-color: #3b82f6;
+}
+
+/* grupo de botões Sim/Não */
+.toggle-group {
+    display: inline-flex;
+    gap: 6px;
+    margin-top: 4px;
+}
+
+.toggle-chip {
+    padding: 4px 10px;
+    border-radius: 6px;
+    border: 1px solid #444;
+    background: #111;
+    color: #e5e5e5;
+    font-size: 12px;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+}
+
+.toggle-chip.no.active {
+    background: #7f1d1d;
+    border-color: #ef4444;
+    color: #fff;
+}
+
+.toggle-chip.yes.active {
+    background: #166534;
+    border-color: #22c55e;
+    color: #fff;
+}
+
+.toggle-chip:active {
+    transform: scale(0.97);
+}
+
+/* link do card dentro dos blocos de processo */
+.link-card {
+    color: #60a5fa;
+    text-decoration: none;
+}
+
+.link-card:hover {
+    text-decoration: underline;
 }

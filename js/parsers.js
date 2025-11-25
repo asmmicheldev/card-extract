@@ -3,10 +3,20 @@
 // ---- Divisão 1: título do card ----
 export function parseTitulo(linhas) {
   let tituloLinha = "";
+  let cardUrl = "";
+  let firstNonEmptySeen = false;
+
   for (const l of linhas) {
     const t = l.trim();
-    if (t !== "") {
+    if (!t) continue;
+
+    if (!firstNonEmptySeen) {
+      // primeira linha não vazia -> título completo
       tituloLinha = t;
+      firstNonEmptySeen = true;
+    } else if (!cardUrl && t.startsWith("http")) {
+      // segunda linha útil que seja URL -> link do card
+      cardUrl = t;
       break;
     }
   }
@@ -22,7 +32,7 @@ export function parseTitulo(linhas) {
     }
   }
 
-  return { nome, descricao: desc };
+  return { nome, descricao: desc, cardUrl };
 }
 
 // ---- Divisão 2: Informações Gerais ----

@@ -11,7 +11,8 @@ import {
   renderPushList,
   renderBannerList,
   renderMktScreenView,
-  autoResizeTextareas
+  autoResizeTextareas,
+  renderChannelProcesses
 } from "./renderers.js";
 
 // ===== helpers de DOM básicos =====
@@ -30,9 +31,19 @@ function setTextValue(id, value) {
   }
 }
 
+// garante que estruturas de processo existem
+function ensureProcessStructures(data) {
+  if (!data.processFlags) data.processFlags = {};
+  if (!data.processChecks) data.processChecks = {};
+  if (!data.processMeta) data.processMeta = {}; // << NOVO
+}
+
 // ===================== UI: CRIAÇÃO DE ABAS =====================
 
 function createTabFromState(tabId, data) {
+  ensureProcessStructures(data);
+  tabsState.tabs[tabId] = data;
+
   const tab = document.createElement("div");
   tab.className = "tab";
   tab.id = tabId;
@@ -88,6 +99,28 @@ function createTabFromState(tabId, data) {
         oninput="handleNotesChange('${tabId}', this.value)">${data.anotacoes || ""}</textarea>
     </div>
 
+    <!-- Farol (abaixo de Anotações) -->
+    <div id="farolAccordion_${tabId}" class="accordion" style="display:none;">
+      <div class="accordion-header" data-accordion-target="farolWrap_${tabId}">
+        <span class="accordion-title">Farol</span>
+        <span class="accordion-arrow">▸</span>
+      </div>
+      <div id="farolWrap_${tabId}" class="accordion-body">
+        <div id="farol_container_${tabId}"></div>
+      </div>
+    </div>
+
+    <!-- Conclusão (abaixo de Farol) -->
+    <div id="conclusaoAccordion_${tabId}" class="accordion" style="display:none;">
+      <div class="accordion-header" data-accordion-target="conclusaoWrap_${tabId}">
+        <span class="accordion-title">Conclusão</span>
+        <span class="accordion-arrow">▸</span>
+      </div>
+      <div id="conclusaoWrap_${tabId}" class="accordion-body">
+        <div id="conclusao_container_${tabId}"></div>
+      </div>
+    </div>
+
     <h2>Informações Gerais</h2>
 
     <div class="info-group">
@@ -130,6 +163,9 @@ function createTabFromState(tabId, data) {
         <span class="accordion-arrow">▸</span>
       </div>
       <div id="pushWrap_${tabId}" class="accordion-body">
+        <!-- Processos sempre primeiro -->
+        <div id="push_process_${tabId}"></div>
+        <!-- Depois os Push 1, Push 2, etc. -->
         <div id="push_container_${tabId}"></div>
       </div>
     </div>
@@ -141,6 +177,9 @@ function createTabFromState(tabId, data) {
         <span class="accordion-arrow">▸</span>
       </div>
       <div id="bannerWrap_${tabId}" class="accordion-body">
+        <!-- Processos primeiro -->
+        <div id="banner_process_${tabId}"></div>
+        <!-- Depois Banner 1, Banner 2, etc. -->
         <div id="banner_container_${tabId}"></div>
       </div>
     </div>
@@ -152,6 +191,9 @@ function createTabFromState(tabId, data) {
         <span class="accordion-arrow">▸</span>
       </div>
       <div id="mktWrap_${tabId}" class="accordion-body">
+        <!-- Processos primeiro -->
+        <div id="mkt_process_${tabId}"></div>
+        <!-- Depois Principal + Blocos -->
         <div id="mkt_container_${tabId}"></div>
       </div>
     </div>
@@ -166,6 +208,7 @@ function createTabFromState(tabId, data) {
   renderPushList(tabId, data.pushes || []);
   renderBannerList(tabId, data.banners || []);
   renderMktScreenView(tabId, data.mktScreen || null);
+  renderChannelProcesses(tabId, data);
 
   autoResizeTextareas(tabId);
 }
@@ -178,6 +221,7 @@ function createTab() {
     input: "",
     nome: "",
     descricao: "",
+    cardUrl: "",
     area: "",
     solicitante: "",
     marca: "",
@@ -189,7 +233,10 @@ function createTab() {
     anotacoes: "",
     pushes: [],
     banners: [],
-    mktScreen: null
+    mktScreen: null,
+    processFlags: {},
+    processChecks: {},
+    processMeta: {}        // << NOVO
   };
 
   createTabFromState(tabId, tabsState.tabs[tabId]);
@@ -231,6 +278,7 @@ function processCard(tabId, texto) {
   const mkt     = comm.mktScreen;
 
   const tabData = tabsState.tabs[tabId] || {};
+  ensureProcessStructures(tabData);
 
   const oldBanners = tabData.banners || [];
   const mergedBanners = banners.map((b, idx) => {
@@ -264,6 +312,7 @@ function processCard(tabId, texto) {
   tabData.input       = texto;
   tabData.nome        = titulo.nome;
   tabData.descricao   = titulo.descricao;
+  tabData.cardUrl     = titulo.cardUrl || "";
 
   tabData.area        = info.area;
   tabData.solicitante = info.solicitante;
@@ -284,6 +333,7 @@ function processCard(tabId, texto) {
   renderPushList(tabId, pushes);
   renderBannerList(tabId, mergedBanners);
   renderMktScreenView(tabId, mkt);
+  renderChannelProcesses(tabId, tabData);
 
   autoResizeTextareas(tabId);
   saveState();
