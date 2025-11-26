@@ -128,7 +128,51 @@ function createTabFromState(tabId, data) {
         oninput="handleNotesChange('${tabId}', this.value)">${data.anotacoes || ""}</textarea>
     </div>
 
-    <!-- Farol (abaixo de Anotações) -->
+    <!-- Lembretes (abaixo de Anotações) -->
+    <div id="lembretesAccordion_${tabId}" class="accordion reminders-accordion">
+      <div class="accordion-header" data-accordion-target="lembretesWrap_${tabId}">
+        <span class="accordion-title">Lembretes</span>
+        <span class="accordion-arrow">▸</span>
+      </div>
+      <div id="lembretesWrap_${tabId}" class="accordion-body">
+        <div class="field field-full">
+          <textarea
+            class="readonly-multiline reminders-text"
+            rows="12"
+            readonly>
+Início de Task | Checklist 
+- Colocar o Owner da task para você e mover para InProgress/Doing
+
+Journey | Checklist 
+- Colocar o nome da Journey
+- Colocar as Tags - [Marca: XP] [Squad Responsável: B2B]
+- Colocar a data e o horario de saida
+- Se tiver, colocar o tempo de descanso/reentrada(allow reentrance e wait period)
+
+Push | Checklist 
+- Nunca esquecer o Condition de Optin
+- Verificar a o card/copy para entender se o Push realmente é uma Offer, ou se é um Relationship, para acertar o Condition de Optin
+
+Banner | Checklist 
+- Se a pagina do banner for a N1_LOGIN_APP, fazer o teste em outra página temporário, senão o seu teste vai aparecer para todos na área de Login
+
+Audiência | Checklist 
+- Colocar o nome da Audiência
+- Colocar as Tags - [Area: Revenue] [Squad Responsável: B2B]
+- Validar o tipo da base em "Evalutation method"(Streaming/Batch)
+- Quando for puxar Atributos/Eventos, verificar o PATH de onde você está pegando, pois existem atributos/eventos com nomes repetidos
+- Salvar como draft e validar antes de ativar
+- No caso de Eventos:
+  - Colocar como "Today" ou alguma data, na opção acima dos eventos
+  - Ccolocar "OR" entre os eventos "Proposition Display" e "Analytics Select Content Event"
+  - Em "Event Rules", verificar se é "Include" ou "Exclude"
+  - Dentro do "At least 1" em "Event Rules", verificar se algo, por exemplo, o "Activity Identifier" está como "equals", ou o "pageName" está como "contains", etc.
+          </textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Farol (abaixo de Lembretes) -->
     <div id="farolAccordion_${tabId}" class="accordion" style="display:none;">
       <div class="accordion-header" data-accordion-target="farolWrap_${tabId}">
         <span class="accordion-title">Farol</span>

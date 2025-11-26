@@ -103,15 +103,15 @@ body {
     white-space: pre-wrap;
 }
 
-/* Accessibility Text */
+/* Accessibility Text / Anotações */
 .readonly-multiline {
-    min-height: 60px;      /* volta a altura mínima */
+    min-height: 60px;
     font-size: 13px;
 }
 
 /* JSON Final */
 .json-final {
-    min-height: 120px;     /* maiorzinho pra JSON */
+    min-height: 120px;
     font-family: Consolas, "Courier New", monospace;
     font-size: 12px;
 }
@@ -137,7 +137,7 @@ body {
     display: flex;
     gap: 12px;
     align-items: stretch;
-    margin-bottom: 12px;
+    margin-bottom: 6px;
 }
 
 .card-col {
@@ -538,7 +538,7 @@ button {
     background: transparent;
     cursor: pointer;
     position: relative;
-    top: 2px;       /* ajusta alinhamento com o texto */
+    top: 2px;
     accent-color: #22c55e;
 }
 
@@ -585,4 +585,18 @@ button {
 
 .link-card:hover {
     text-decoration: underline;
+}
+
+/* === LEMBRETES === */
+
+/* Deixa o accordion de lembretes um pouco mais colado nas anotações */
+.reminders-accordion {
+    margin-top: 6px;
+}
+
+/* Textarea de lembretes: um pouco mais “compacta” visualmente */
+.reminders-text {
+    font-size: 12px;
+    line-height: 1.4;
+    min-height: 600px;
 }
