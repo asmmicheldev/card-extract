@@ -1,9 +1,6 @@
 // js/renderers.js
 import { tabsState, saveState } from "./state.js";
 
-// ==== CONFIG OCR ====
-const OCR_API_KEY = "K81669629288957";
-
 const DEMANDANTE_HASHS = {
   "paulo.alberto@xpi.com.br":
     "b743c8c34edcfa116ce1f17a9bd53b1692753051ada96db8dae03ea2bc71793a",
@@ -99,7 +96,7 @@ function buildQrCodeUrl(link) {
   return `https://api.qrserver.com/v1/create-qr-code/?data=${encoded}&size=300x300`;
 }
 
-// Usa o OCR.Space para extrair o texto da imagem
+// OCR com Tesseract.js (client-side)
 async function fetchAccessibilityText(imageUrl, textarea, tabId) {
   if (!textarea) return;
 
@@ -120,27 +117,24 @@ async function fetchAccessibilityText(imageUrl, textarea, tabId) {
     return;
   }
 
+  const T = window.Tesseract;
+  if (!T) {
+    textarea.value = "Tesseract.js não está carregado.";
+    return;
+  }
+
   textarea.value = "Lendo texto da imagem...";
 
   try {
-    const form = new FormData();
-    form.append("apikey", OCR_API_KEY);
-    form.append("url", imageUrl);
-    form.append("language", "por");
-
-    const res = await fetch("https://api.ocr.space/parse/image", {
-      method: "POST",
-      body: form
+    const result = await T.recognize(imageUrl, "por", {
+      logger: m => console.log("tesseract", m)
     });
 
-    if (!res.ok) {
-      textarea.value = "Erro ao chamar OCR (HTTP " + res.status + ").";
-      return;
-    }
+    const text = (result && result.data && result.data.text)
+      ? result.data.text.trim()
+      : "";
 
-    const data = await res.json();
-    const txt = data?.ParsedResults?.[0]?.ParsedText?.trim();
-    const finalText = txt || "Nenhum texto encontrado.";
+    const finalText = text || "Nenhum texto encontrado.";
 
     textarea.value = finalText;
     tabsState.ocrCache[imageUrl] = finalText;
@@ -148,12 +142,14 @@ async function fetchAccessibilityText(imageUrl, textarea, tabId) {
 
     textarea.dispatchEvent(new Event("input", { bubbles: true }));
   } catch (e) {
-    console.error("Erro OCR:", e);
+    console.error("Erro OCR (Tesseract):", e);
     textarea.value = "Erro ao processar imagem.";
   }
 
   autoResizeTextareas(tabId);
 }
+
+
 
 /* ====================================================================== */
 /* =============== RENDERIZAÇÃO PUSH / BANNER / MKTSCREEN =============== */
