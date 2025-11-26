@@ -183,17 +183,6 @@ Audiência | Checklist
       </div>
     </div>
 
-    <!-- Conclusão (abaixo de Farol) -->
-    <div id="conclusaoAccordion_${tabId}" class="accordion" style="display:none;">
-      <div class="accordion-header" data-accordion-target="conclusaoWrap_${tabId}">
-        <span class="accordion-title">Conclusão</span>
-        <span class="accordion-arrow">▸</span>
-      </div>
-      <div id="conclusaoWrap_${tabId}" class="accordion-body">
-        <div id="conclusao_container_${tabId}"></div>
-      </div>
-    </div>
-
     <h2>Informações Gerais</h2>
 
     <div class="info-group">

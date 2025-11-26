@@ -513,35 +513,6 @@ button {
     margin-top: 4px;
 }
 
-/* checklist de itens (Testes Aprovados?) */
-.checklist {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 4px 12px;
-    margin-top: 8px;
-}
-
-.check-item {
-    font-size: 13px;
-    color: #dddddd;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-/* checkbox usando o desenho nativo, mas com cor customizada + pequeno ajuste vertical */
-.check-item input[type="checkbox"] {
-    width: 14px;
-    height: 14px;
-    border: 1px solid #e5e5e5;
-    border-radius: 3px;
-    background: transparent;
-    cursor: pointer;
-    position: relative;
-    top: 2px;
-    accent-color: #22c55e;
-}
-
 /* grupo de botões Sim/Não */
 .toggle-group {
     display: inline-flex;

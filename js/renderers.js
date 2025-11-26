@@ -1167,15 +1167,9 @@ function renderPushProcess(tabId, tabData) {
 
   // --- flags para controlar a fila ---
   const testsApproved = getFlag(tabData, "pushTestsApproved");
-  const checksOk = areAllChecksOn(tabData, "push", [
-    "baseTesteOk",
-    "segmentacaoOk",
-    "horarioOk",
-    "conteudoOk"
-  ]);
-
-  const showProntoQA = testsApproved && checksOk; // só aparece se testes = SIM + todas checks
-  const showQA = getFlag(tabData, "pushReadyQA"); // QA só aparece se Pronto QA = SIM
+  // Agora "Pronto para QA?" depende só de Testes Aprovados = SIM
+  const showProntoQA = testsApproved;
+  const showQA = getFlag(tabData, "pushReadyQA");          // QA só aparece se Pronto QA = SIM
   const showAtivacao = getFlag(tabData, "pushQAApproved"); // Ativação só depois do QA
   const showMsgGrupo = getFlag(tabData, "pushAtivacaoApproved"); // Mensagem só depois da Ativação
 
@@ -1233,39 +1227,16 @@ function renderPushProcess(tabId, tabData) {
         </div>
       </div>
 
-      <!-- Testes Aprovados? = toggle + checklist que só aparece no SIM -->
+      <!-- Testes Aprovados? = apenas o toggle agora -->
       <div class="field field-full">
         <label>Testes Aprovados?</label>
         <div class="toggle-group" data-flag="pushTestsApproved">
           <button type="button" class="toggle-chip no">Não</button>
           <button type="button" class="toggle-chip yes">Sim</button>
         </div>
-
-        <div class="checklist" style="${testsApproved ? "" : "display:none;"}">
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="push" data-key="baseTesteOk">
-            Base de teste configurada
-          </label>
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="push" data-key="segmentacaoOk">
-            Segmentação correta
-          </label>
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="push" data-key="horarioOk">
-            Data/horário corretos
-          </label>
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="push" data-key="conteudoOk">
-            Conteúdo (título/texto/CTA) ok
-          </label>
-        </div>
       </div>
 
-      <!-- Pronto para QA? só aparece se testes = SIM + todas checks -->
+      <!-- Pronto para QA? só aparece se Testes = SIM -->
       <div class="field field-full" style="${showProntoQA ? "" : "display:none;"}">
         <label>Pronto para QA?</label>
         <div class="process-row">
@@ -1325,7 +1296,6 @@ function renderPushProcess(tabId, tabData) {
 }
 
 
-
 function renderBannerProcessProcess(tabId, tabData) {
   const container = document.getElementById("banner_process_" + tabId);
   if (!container) return;
@@ -1341,16 +1311,8 @@ function renderBannerProcessProcess(tabId, tabData) {
   const cardUrl = tabData.cardUrl || "";
 
   const testsApproved = getFlag(tabData, "bannerTestsApproved");
-  const checksOk = areAllChecksOn(tabData, "banner", [
-    "bannerDesativado",
-    "dataInicioOriginal",
-    "baseOriginal",
-    "prioridadeOriginal",
-    "dataCorreta",
-    "horarioCorreto"
-  ]);
-
-  const showProntoQA = testsApproved && checksOk;
+  // "Pronto para QA?" agora depende só do toggle Testes Aprovados = SIM
+  const showProntoQA = testsApproved;
   const showQA = getFlag(tabData, "bannerReadyQA");
   const showAtivacao = getFlag(tabData, "bannerQAApproved");
   const showMsgGrupo = getFlag(tabData, "bannerAtivacaoApproved");
@@ -1403,38 +1365,6 @@ function renderBannerProcessProcess(tabId, tabData) {
         <div class="toggle-group" data-flag="bannerTestsApproved">
           <button type="button" class="toggle-chip no">Não</button>
           <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="checklist" style="${testsApproved ? "" : "display:none;"}">
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="banner" data-key="bannerDesativado">
-            Banner desativado
-          </label>
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="banner" data-key="dataInicioOriginal">
-            dataInicio original (caso precisar alterar)
-          </label>
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="banner" data-key="baseOriginal">
-            Base original
-          </label>
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="banner" data-key="prioridadeOriginal">
-            Prioridade original > Confirmar no Teams – 750
-          </label>
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="banner" data-key="dataCorreta">
-            Data correta
-          </label>
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="banner" data-key="horarioCorreto">
-            Horário correto
-          </label>
         </div>
       </div>
 
@@ -1494,7 +1424,6 @@ function renderBannerProcessProcess(tabId, tabData) {
 }
 
 
-
 function renderMktProcess(tabId, tabData) {
   const container = document.getElementById("mkt_process_" + tabId);
   if (!container) return;
@@ -1510,8 +1439,8 @@ function renderMktProcess(tabId, tabData) {
   const cardUrl = tabData.cardUrl || "";
 
   const testsApproved = getFlag(tabData, "mktTestsApproved");
-  const checksOk = areAllChecksOn(tabData, "mkt", ["linksFuncionando"]);
-  const showProntoQA = testsApproved && checksOk;
+  // "Pronto para QA?" agora só depende de Testes Aprovados = SIM
+  const showProntoQA = testsApproved;
   const showQA = getFlag(tabData, "mktReadyQA");
   const showAtivacao = getFlag(tabData, "mktQAApproved");
   const showMsgGrupo = getFlag(tabData, "mktAtivacaoApproved");
@@ -1564,13 +1493,6 @@ function renderMktProcess(tabId, tabData) {
         <div class="toggle-group" data-flag="mktTestsApproved">
           <button type="button" class="toggle-chip no">Não</button>
           <button type="button" class="toggle-chip yes">Sim</button>
-        </div>
-        <div class="checklist" style="${testsApproved ? "" : "display:none;"}">
-          <label class="check-item">
-            <input type="checkbox" class="process-checkbox"
-                   data-channel="mkt" data-key="linksFuncionando">
-            Links funcionando?
-          </label>
         </div>
       </div>
 
@@ -1630,7 +1552,6 @@ function renderMktProcess(tabId, tabData) {
 }
 
 
-
 /* ---- FAROL / CONCLUSÃO ---- */
 
 function buildFarolText(tabData) {
@@ -1686,20 +1607,13 @@ function renderFarolConclusao(tabId, tabData) {
 
   // FAROL: depende de Ready QA de todos canais presentes
   let farolUnlocked = anyChannel;
-  if (hasPush) farolUnlocked = farolUnlocked && getFlag(tabData, "pushReadyQA");
+  if (hasPush)   farolUnlocked = farolUnlocked && getFlag(tabData, "pushReadyQA");
   if (hasBanner) farolUnlocked = farolUnlocked && getFlag(tabData, "bannerReadyQA");
-  if (hasMkt) farolUnlocked = farolUnlocked && getFlag(tabData, "mktReadyQA");
-
-  // CONCLUSÃO: depende de MsgGrupo de todos canais presentes
-  let conclusaoUnlocked = anyChannel;
-  if (hasPush) conclusaoUnlocked = conclusaoUnlocked && getFlag(tabData, "pushMsgGrupo");
-  if (hasBanner) conclusaoUnlocked = conclusaoUnlocked && getFlag(tabData, "bannerMsgGrupo");
-  if (hasMkt) conclusaoUnlocked = conclusaoUnlocked && getFlag(tabData, "mktMsgGrupo");
+  if (hasMkt)    farolUnlocked = farolUnlocked && getFlag(tabData, "mktReadyQA");
 
   const nomeCard = tabData.nome || "Sem nome";
   const cardUrl = tabData.cardUrl || "";
 
-  // FAROL
   const farolAcc = document.getElementById("farolAccordion_" + tabId);
   const farolContainer = document.getElementById("farol_container_" + tabId);
   if (farolAcc && farolContainer) {
@@ -1777,39 +1691,8 @@ function renderFarolConclusao(tabId, tabData) {
       farolContainer.appendChild(section);
     }
   }
-
-  // CONCLUSÃO
-  const conclAcc = document.getElementById("conclusaoAccordion_" + tabId);
-  const conclContainer = document.getElementById("conclusao_container_" + tabId);
-  if (conclAcc && conclContainer) {
-    if (!conclusaoUnlocked) {
-      conclAcc.style.display = "none";
-      conclContainer.innerHTML = "";
-    } else {
-      conclAcc.style.display = "";
-      const section = document.createElement("div");
-      section.className = "subsection";
-
-      section.innerHTML = `
-        <div class="field field-full">
-          <label>Remaining Work e Owners alterados?</label>
-          <div class="process-row">
-            <div class="toggle-group" data-flag="cardRemainingWorkOk">
-              <button type="button" class="toggle-chip no">Não</button>
-              <button type="button" class="toggle-chip yes">Sim</button>
-            </div>
-            <div class="process-status" data-flag-text="cardRemainingWorkOk">
-              CARD CONCLUIDO!
-            </div>
-          </div>
-        </div>
-      `;
-
-      conclContainer.innerHTML = "";
-      conclContainer.appendChild(section);
-    }
-  }
 }
+
 
 // ----------------- RE-RENDER DOS PROCESSOS PRESERVANDO ABERTOS ---------
 
@@ -1842,19 +1725,6 @@ function attachProcessHandlers(tabId, tabData) {
     );
   }
 
-  // CHECKBOXES
-  root.querySelectorAll(".process-checkbox").forEach(input => {
-    const channel = input.dataset.channel;
-    const key = input.dataset.key;
-    input.checked = getCheck(tabData, channel, key);
-
-    input.addEventListener("change", () => {
-      const openIds = getOpenAccordionIds();
-      setCheck(tabId, channel, key, input.checked);
-      reRenderProcessesForTab(tabId, openIds);
-    });
-  });
-
   // TOGGLES Sim/Não
   root.querySelectorAll(".toggle-group[data-flag]").forEach(group => {
     const flagName = group.dataset.flag;
@@ -1882,13 +1752,15 @@ function attachProcessHandlers(tabId, tabData) {
     }
   });
 
-  // textos "PRONTO PARA QA!", "ENVIAR!", "CANAL CONCLUIDO!", "CARD CONCLUIDO!"
+  // textos "PRONTO PARA QA!", "ENVIAR!", "ATIVAR!", "CANAL CONCLUIDO!"
   root.querySelectorAll(".process-status[data-flag-text]").forEach(el => {
     const name = el.dataset.flagText;
     const on = getFlag(tabData, name);
     el.style.display = on ? "block" : "none";
   });
 }
+
+
 
 /* ---- Função principal de processos (chamada pelo main.js) ---- */
 
