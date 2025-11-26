@@ -15,7 +15,7 @@ import {
   renderChannelProcesses
 } from "./renderers.js";
 
-// ===== Texto padrão global de Lembretes (usado na primeira vez) =====
+// ===== Texto padrão global de Lembretes =====
 const DEFAULT_REMINDERS_TEXT = `CARD
 
 Card Inicio | Checklist 
@@ -105,7 +105,7 @@ Marketing Screen | Checklist
   - Verificar se os links estão todos funcionando
   - Verificar se precisa colocar os gatilhos de clicks(moments)`;
 
-// ===== helpers de DOM básicos =====
+// ===== helpers de DOM =====
 
 function setFieldValue(prefix, tabId, value) {
   const el = document.getElementById(prefix + tabId);
@@ -121,7 +121,6 @@ function setTextValue(id, value) {
   }
 }
 
-// garante que estruturas de processo existem
 function ensureProcessStructures(data) {
   if (!data.processFlags) data.processFlags = {};
   if (!data.processChecks) data.processChecks = {};
@@ -170,7 +169,6 @@ function createTabFromState(tabId, data) {
   content.className = "section";
   content.id = "content_" + tabId;
 
-  // texto atual de lembretes: se global estiver vazio, usa o padrão
   const remindersText =
     (tabsState.remindersText && tabsState.remindersText.trim() !== "")
       ? tabsState.remindersText
@@ -224,7 +222,7 @@ function createTabFromState(tabId, data) {
         oninput="handleNotesChange('${tabId}', this.value)">${data.anotacoes || ""}</textarea>
     </div>
 
-    <!-- Lembretes (abaixo de Anotações) -->
+    <!-- Lembretes -->
     <div id="lembretesAccordion_${tabId}" class="accordion reminders-accordion">
       <div class="accordion-header" data-accordion-target="lembretesWrap_${tabId}">
         <span class="accordion-title">Lembretes</span>
@@ -241,7 +239,7 @@ function createTabFromState(tabId, data) {
       </div>
     </div>
 
-    <!-- Farol (abaixo de Lembretes) -->
+    <!-- Farol -->
     <div id="farolAccordion_${tabId}" class="accordion" style="display:none;">
       <div class="accordion-header" data-accordion-target="farolWrap_${tabId}">
         <span class="accordion-title">Farol</span>
@@ -299,9 +297,7 @@ function createTabFromState(tabId, data) {
         <span class="accordion-arrow">▸</span>
       </div>
       <div id="pushWrap_${tabId}" class="accordion-body">
-        <!-- Processos sempre primeiro -->
         <div id="push_process_${tabId}"></div>
-        <!-- Depois os Push 1, Push 2, etc. -->
         <div id="push_container_${tabId}"></div>
       </div>
     </div>
@@ -313,9 +309,7 @@ function createTabFromState(tabId, data) {
         <span class="accordion-arrow">▸</span>
       </div>
       <div id="bannerWrap_${tabId}" class="accordion-body">
-        <!-- Processos primeiro -->
         <div id="banner_process_${tabId}"></div>
-        <!-- Depois Banner 1, Banner 2, etc. -->
         <div id="banner_container_${tabId}"></div>
       </div>
     </div>
@@ -327,9 +321,7 @@ function createTabFromState(tabId, data) {
         <span class="accordion-arrow">▸</span>
       </div>
       <div id="mktWrap_${tabId}" class="accordion-body">
-        <!-- Processos primeiro -->
         <div id="mkt_process_${tabId}"></div>
-        <!-- Depois Principal + Blocos -->
         <div id="mkt_container_${tabId}"></div>
       </div>
     </div>
@@ -385,7 +377,7 @@ function switchTab(tabId) {
   tabsState.activeTab = tabId;
 
   document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
-  document.querySelectorAll(".section").forEach(c => c.style.display = "none");
+  document.querySelectorAll(".section").forEach(c => (c.style.display = "none"));
 
   const tabEl = document.getElementById(tabId);
   const contentEl = document.getElementById("content_" + tabId);
@@ -428,7 +420,6 @@ function processCard(tabId, texto) {
     };
   });
 
-  // atualiza campos visuais
   setFieldValue("nome_", tabId, titulo.nome);
   setFieldValue("base_", tabId, dados.base);
 
@@ -444,7 +435,6 @@ function processCard(tabId, texto) {
 
   renderCanais(tabId, info.canais);
 
-  // atualiza estado
   tabData.title       = titulo.nome || "Card";
   tabData.input       = texto;
   tabData.nome        = titulo.nome;
@@ -487,18 +477,15 @@ function handleBaseChange(tabId, value) {
   const tabData = tabsState.tabs[tabId] || {};
   tabData.base = value;
   tabsState.tabs[tabId] = tabData;
-  // Farol / conclusão usam base -> re-render
   renderChannelProcesses(tabId, tabData);
   saveState();
 }
 
-// LEMBRETES: handler global
+// ===== LEMBRETES =====
 function handleRemindersChange(tabId, value) {
-  // atualiza o texto global
   tabsState.remindersText = value;
   saveState();
 
-  // opcional: sincroniza com outras abas abertas
   document.querySelectorAll(".reminders-text").forEach(el => {
     if (el.id !== `reminders_${tabId}`) {
       el.value = value;
@@ -548,7 +535,6 @@ function importCardState(tabId) {
     return;
   }
 
-  // garante estruturas mínimas
   ensureProcessStructures(obj);
   if (!Array.isArray(obj.pushes)) obj.pushes = [];
   if (!Array.isArray(obj.banners)) obj.banners = [];
@@ -558,7 +544,6 @@ function importCardState(tabId) {
 
   tabsState.tabs[tabId] = obj;
 
-  // Atualiza campos principais
   const originalTa = document.getElementById("cardOriginal_" + tabId);
   if (originalTa) {
     originalTa.value = obj.input || "";
@@ -664,7 +649,7 @@ if (Object.keys(tabsState.tabs).length === 0) {
 
 document.getElementById("add-tab").onclick = createTab;
 
-// ==== expõe funções globais pros handlers inline ====
+// ==== funções globais pros handlers inline ====
 window.processCard = processCard;
 window.handlePaste = handlePaste;
 window.handleNotesChange = handleNotesChange;

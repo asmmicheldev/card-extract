@@ -11,11 +11,9 @@ export function parseTitulo(linhas) {
     if (!t) continue;
 
     if (!firstNonEmptySeen) {
-      // primeira linha não vazia -> título completo
       tituloLinha = t;
       firstNonEmptySeen = true;
     } else if (!cardUrl && t.startsWith("http")) {
-      // segunda linha útil que seja URL -> link do card
       cardUrl = t;
       break;
     }
@@ -144,7 +142,6 @@ export function parseDados(linhas) {
 
 // ========== PARSE DE COMUNICAÇÕES ==========
 
-// Quebra o card em blocos de comunicação
 export function splitCommunications(linhas) {
   const blocks = [];
   for (let i = 0; i < linhas.length; i++) {
@@ -165,7 +162,7 @@ export function splitCommunications(linhas) {
       if (match) {
         numero = parseInt(match[1], 10);
         posicao = match[2].trim();
-        tipo = match[3].trim().toUpperCase(); // PUSH / BANNER / MKTSCREEN
+        tipo = match[3].trim().toUpperCase();
       }
 
       blocks.push({ header, numero, posicao, tipo, lines: subset });
@@ -375,7 +372,6 @@ export function parseMktScreenBlock(subset) {
   let channel = "";
   const blocos = [];
 
-  // Nome Experiência macro (pega o primeiro que aparecer)
   for (const l of subset) {
     const linha = l.trim();
     if (linha.startsWith("Nome Experiência:")) {
@@ -433,7 +429,7 @@ export function parseMktScreenBlock(subset) {
   return { posicaoJornada, url, blocosQtd, nomeExpMacro, channel, blocos };
 }
 
-// Junta tudo
+// ---- Junta tudo ----
 export function parseCommunications(linhas) {
   const blocks = splitCommunications(linhas);
 

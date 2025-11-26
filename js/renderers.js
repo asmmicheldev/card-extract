@@ -1,7 +1,7 @@
 // js/renderers.js
 import { tabsState, saveState } from "./state.js";
 
-// ==== CONFIG OCR (depois você troca a key) ====
+// ==== CONFIG OCR ====
 const OCR_API_KEY = "K81669629288957";
 
 const DEMANDANTE_HASHS = {
@@ -112,7 +112,6 @@ async function fetchAccessibilityText(imageUrl, textarea, tabId) {
     tabsState.ocrCache = {};
   }
 
-  // 1) cache
   const cached = tabsState.ocrCache[imageUrl];
   if (cached) {
     textarea.value = cached;
@@ -205,7 +204,6 @@ export function renderPushList(tabId, pushes) {
     const block = document.createElement("div");
     block.className = "subsection";
 
-    // meta
     let decoratedDate = "";
     if (p.dataInicio) {
       const current = new Date(p.dataInicio.trim());
@@ -301,7 +299,6 @@ export function renderPushList(tabId, pushes) {
     const rowTitulos = document.createElement("div");
     rowTitulos.className = "fields-grid-3";
 
-    // helper para Título/Subtítulo/URL editáveis
     function addInputFieldRow(labelText, value, fieldKey, editable = false) {
       const field = document.createElement("div");
       field.className = "field";
@@ -327,7 +324,6 @@ export function renderPushList(tabId, pushes) {
           const tabData = tabsState.tabs[tabId];
           if (!tabData || !tabData.pushes || !tabData.pushes[index]) return;
           tabData.pushes[index][fieldKey] = input.value;
-          // mantém objeto local alinhado também
           p[fieldKey] = input.value;
           saveState();
         });
@@ -338,7 +334,6 @@ export function renderPushList(tabId, pushes) {
       rowTitulos.appendChild(field);
     }
 
-    // agora esses 3 são editáveis
     addInputFieldRow("Título", p.titulo, "titulo", true);
     addInputFieldRow("Subtítulo", p.subtitulo, "subtitulo", true);
     addInputFieldRow("URL", p.url, "url", true);
@@ -402,9 +397,8 @@ export function renderBannerList(tabId, banners) {
 
     let accTextarea = null;
     let jsonFinalArea = null;
-    let img = null; // vamos setar depois no preview, mas já existe aqui
+    let img = null;
 
-    // helper genérico de input, com opção de ser editável
     function addInputField(labelText, value, full = false, fieldKey = null, editable = false) {
       const field = document.createElement("div");
       field.className = "field";
@@ -447,7 +441,6 @@ export function renderBannerList(tabId, banners) {
       grid.appendChild(field);
     }
 
-    // datas / obs
     const infoTop = document.createElement("div");
     infoTop.className = "info-group";
 
@@ -492,7 +485,6 @@ export function renderBannerList(tabId, banners) {
     infoTop.appendChild(rowDates);
     block.appendChild(infoTop);
 
-    // Título / Sub / CTA (somente display)
     if (b.titulo || b.subtitulo || b.cta) {
       const infoTit = document.createElement("div");
       infoTit.className = "info-group";
@@ -539,7 +531,6 @@ export function renderBannerList(tabId, banners) {
       block.appendChild(infoTit);
     }
 
-    // layout meta
     const hasLayoutMeta = b.contentZone || b.template || b.componentStyle;
     if (hasLayoutMeta) {
       const layoutGroup = document.createElement("div");
@@ -587,10 +578,9 @@ export function renderBannerList(tabId, banners) {
       block.appendChild(layoutGroup);
     }
 
-    // grid campos
-    addInputField("Nome Experiência", b.nomeExp, true);                 // readonly
-    addInputField("Channel", b.channel, false, "channel", true);       // EDITÁVEL
-    addInputField("Imagem (URL)", b.imagem, true, "imagem", true);     // EDITÁVEL
+    addInputField("Nome Experiência", b.nomeExp, true);
+    addInputField("Channel", b.channel, false, "channel", true);
+    addInputField("Imagem (URL)", b.imagem, true, "imagem", true);
 
     // Accessibility Text
     const accField = document.createElement("div");
@@ -638,7 +628,7 @@ export function renderBannerList(tabId, banners) {
             saveState();
           }
         } catch {
-          // ignora json inválido
+          // json inválido, ignora
         }
       } else {
         saveState();
@@ -841,7 +831,7 @@ export function renderBannerList(tabId, banners) {
             saveState();
           }
         } catch {
-          // ignora se json inválido
+          // json inválido, ignora
         }
       });
 
@@ -878,7 +868,7 @@ export function renderMktScreenView(tabId, mkt) {
 
   if (accordion) accordion.style.display = "";
 
-  // ----- Principal (Channel + URL + QR) como toggle -----
+  // Principal (Channel + URL + QR) como toggle
   const geral = document.createElement("div");
   geral.className = "subsection";
 
@@ -922,7 +912,6 @@ export function renderMktScreenView(tabId, mkt) {
     grid.appendChild(field);
   }
 
-  // agora Channel e URL são editáveis
   addInputField("Channel", mkt.channel || "", true, "channel", true);
   addInputField("URL Marketing Screen", mkt.url || "", true, "url", true);
 
@@ -965,7 +954,6 @@ export function renderMktScreenView(tabId, mkt) {
   qrBlock.appendChild(qrImg);
   geral.appendChild(qrBlock);
 
-  // Wrap do "Principal" num accordion-item
   const principalItem = document.createElement("div");
   principalItem.className = "accordion-item";
 
@@ -994,7 +982,7 @@ export function renderMktScreenView(tabId, mkt) {
 
   container.appendChild(principalItem);
 
-  // ----- Blocos -----
+  // Blocos
   if (mkt.blocos && mkt.blocos.length > 0) {
     mkt.blocos.forEach((b, index) => {
       const item = document.createElement("div");
@@ -1052,7 +1040,7 @@ export function renderMktScreenView(tabId, mkt) {
         label.textContent = labelText;
 
         const ta = document.createElement("textarea");
-        ta.className = "json-final";   // reaproveita estilo de JSON Final
+        ta.className = "json-final";
         ta.rows = 8;
         ta.spellcheck = false;
         ta.value = value || "";
@@ -1079,7 +1067,6 @@ export function renderMktScreenView(tabId, mkt) {
       }
 
       addInputFieldBloco("Nome Experiência", b.nomeExp, true);
-      // JSON do bloco agora é editável
       addCodeFieldBloco("JSON do bloco", b.json, index);
 
       block.appendChild(gridBloco);
@@ -1096,6 +1083,7 @@ export function renderMktScreenView(tabId, mkt) {
 /* ====================================================================== */
 /* ====================== PROCESSOS / FAROL / CONCLUSÃO ================= */
 /* ====================================================================== */
+
 function getFlag(tabData, name) {
   return !!(tabData.processFlags && tabData.processFlags[name]);
 }
@@ -1144,7 +1132,6 @@ function applyToggleVisual(group, on) {
 
 /* ---- Processos por canal ---- */
 
-
 function renderPushProcess(tabId, tabData) {
   const container = document.getElementById("push_process_" + tabId);
   if (!container) return;
@@ -1153,25 +1140,21 @@ function renderPushProcess(tabId, tabData) {
 
   const pushes = tabData.pushes || [];
   if (!pushes.length) {
-    // se não tem push, não mostra bloco de processo de push
     return;
   }
 
   const nomeCard = tabData.nome || "Sem nome";
   const cardUrl = tabData.cardUrl || "";
 
-  // pega email do solicitante e calcula hash
   const solicitanteEmail =
     (tabData.solicitanteEmail || tabData.solicitante || "").trim();
   const solicitanteHash = getHashForSolicitante(solicitanteEmail);
 
-  // --- flags para controlar a fila ---
   const testsApproved = getFlag(tabData, "pushTestsApproved");
-  // Agora "Pronto para QA?" depende só de Testes Aprovados = SIM
   const showProntoQA = testsApproved;
-  const showQA = getFlag(tabData, "pushReadyQA");          // QA só aparece se Pronto QA = SIM
-  const showAtivacao = getFlag(tabData, "pushQAApproved"); // Ativação só depois do QA
-  const showMsgGrupo = getFlag(tabData, "pushAtivacaoApproved"); // Mensagem só depois da Ativação
+  const showQA = getFlag(tabData, "pushReadyQA");
+  const showAtivacao = getFlag(tabData, "pushQAApproved");
+  const showMsgGrupo = getFlag(tabData, "pushAtivacaoApproved");
 
   const accItem = document.createElement("div");
   accItem.className = "accordion-item";
@@ -1227,7 +1210,6 @@ function renderPushProcess(tabId, tabData) {
         </div>
       </div>
 
-      <!-- Testes Aprovados? = apenas o toggle agora -->
       <div class="field field-full">
         <label>Testes Aprovados?</label>
         <div class="toggle-group" data-flag="pushTestsApproved">
@@ -1236,7 +1218,6 @@ function renderPushProcess(tabId, tabData) {
         </div>
       </div>
 
-      <!-- Pronto para QA? só aparece se Testes = SIM -->
       <div class="field field-full" style="${showProntoQA ? "" : "display:none;"}">
         <label>Pronto para QA?</label>
         <div class="process-row">
@@ -1250,7 +1231,6 @@ function renderPushProcess(tabId, tabData) {
         </div>
       </div>
 
-      <!-- QA Aprovado? só aparece se Pronto para QA = SIM -->
       <div class="field field-full" style="${showQA ? "" : "display:none;"}">
         <label>QA Aprovado?</label>
         <div class="toggle-group" data-flag="pushQAApproved">
@@ -1259,7 +1239,6 @@ function renderPushProcess(tabId, tabData) {
         </div>
       </div>
 
-      <!-- Ativação Aprovada? só aparece se QA Aprovado = SIM -->
       <div class="field field-full" style="${showAtivacao ? "" : "display:none;"}">
         <label>Ativação Aprovada?</label>
         <div class="process-row">
@@ -1273,7 +1252,6 @@ function renderPushProcess(tabId, tabData) {
         </div>
       </div>
 
-      <!-- Mensagem grupo só aparece se Ativação = SIM -->
       <div class="field field-full" style="${showMsgGrupo ? "" : "display:none;"}">
         <label>Mensagem no grupo de confirmação?</label>
         <div class="process-row">
@@ -1295,7 +1273,6 @@ function renderPushProcess(tabId, tabData) {
   container.appendChild(accItem);
 }
 
-
 function renderBannerProcessProcess(tabId, tabData) {
   const container = document.getElementById("banner_process_" + tabId);
   if (!container) return;
@@ -1311,7 +1288,6 @@ function renderBannerProcessProcess(tabId, tabData) {
   const cardUrl = tabData.cardUrl || "";
 
   const testsApproved = getFlag(tabData, "bannerTestsApproved");
-  // "Pronto para QA?" agora depende só do toggle Testes Aprovados = SIM
   const showProntoQA = testsApproved;
   const showQA = getFlag(tabData, "bannerReadyQA");
   const showAtivacao = getFlag(tabData, "bannerQAApproved");
@@ -1423,7 +1399,6 @@ function renderBannerProcessProcess(tabId, tabData) {
   container.appendChild(accItem);
 }
 
-
 function renderMktProcess(tabId, tabData) {
   const container = document.getElementById("mkt_process_" + tabId);
   if (!container) return;
@@ -1439,7 +1414,6 @@ function renderMktProcess(tabId, tabData) {
   const cardUrl = tabData.cardUrl || "";
 
   const testsApproved = getFlag(tabData, "mktTestsApproved");
-  // "Pronto para QA?" agora só depende de Testes Aprovados = SIM
   const showProntoQA = testsApproved;
   const showQA = getFlag(tabData, "mktReadyQA");
   const showAtivacao = getFlag(tabData, "mktQAApproved");
@@ -1605,7 +1579,6 @@ function renderFarolConclusao(tabId, tabData) {
 
   const anyChannel = hasPush || hasBanner || hasMkt;
 
-  // FAROL: depende de Ready QA de todos canais presentes
   let farolUnlocked = anyChannel;
   if (hasPush)   farolUnlocked = farolUnlocked && getFlag(tabData, "pushReadyQA");
   if (hasBanner) farolUnlocked = farolUnlocked && getFlag(tabData, "bannerReadyQA");
@@ -1627,7 +1600,6 @@ function renderFarolConclusao(tabId, tabData) {
 
       const farolText = buildFarolText(tabData);
 
-      // Mensagem do Farol
       const farolField = document.createElement("div");
       farolField.className = "field field-full";
 
@@ -1644,7 +1616,6 @@ function renderFarolConclusao(tabId, tabData) {
 
       section.appendChild(farolField);
 
-      // Mensagem para QA
       const qaField = document.createElement("div");
       qaField.className = "field field-full";
 
@@ -1701,7 +1672,6 @@ function reRenderProcessesForTab(tabId, openIds = []) {
   if (!tabData) return;
   renderChannelProcesses(tabId, tabData);
 
-  // reabre os accordions que estavam abertos
   if (openIds && openIds.length) {
     openIds.forEach(id => {
       const body = document.getElementById(id);
@@ -1725,7 +1695,6 @@ function attachProcessHandlers(tabId, tabData) {
     );
   }
 
-  // TOGGLES Sim/Não
   root.querySelectorAll(".toggle-group[data-flag]").forEach(group => {
     const flagName = group.dataset.flag;
     const current = getFlag(tabData, flagName);
@@ -1752,14 +1721,12 @@ function attachProcessHandlers(tabId, tabData) {
     }
   });
 
-  // textos "PRONTO PARA QA!", "ENVIAR!", "ATIVAR!", "CANAL CONCLUIDO!"
   root.querySelectorAll(".process-status[data-flag-text]").forEach(el => {
     const name = el.dataset.flagText;
     const on = getFlag(tabData, name);
     el.style.display = on ? "block" : "none";
   });
 }
-
 
 
 /* ---- Função principal de processos (chamada pelo main.js) ---- */

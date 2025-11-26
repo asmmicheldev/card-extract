@@ -5,7 +5,6 @@ export let tabsState = {
   tabs: {},
   activeTab: null,
   ocrCache: {},
-  // Texto global de Lembretes (vale para todas as abas)
   remindersText: ""
 };
 
@@ -30,14 +29,12 @@ export function loadState() {
     }
   }
 
-  // garante estrutura mínima
   if (!tabsState.tabs) tabsState.tabs = {};
   if (!tabsState.ocrCache) tabsState.ocrCache = {};
   if (typeof tabsState.remindersText !== "string") {
     tabsState.remindersText = "";
   }
 
-  // calcula o maior índice de aba existente
   const ids = Object.keys(tabsState.tabs)
     .map(id => parseInt(id.replace("tab_", ""), 10))
     .filter(n => !isNaN(n));

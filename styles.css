@@ -48,7 +48,7 @@ body {
 
 /* Campo padrão */
 .field {
-    margin-bottom: 8px; /* ainda funciona fora de grid */
+    margin-bottom: 8px;
 }
 
 /* Campo que deve SEMPRE ocupar a linha inteira dentro do grid */
@@ -83,21 +83,19 @@ body {
     border-color: #444;
 }
 
-/* input pequeno inline (prioridade teste, se usar de novo) */
 .input-inline {
     width: 80px;
     display: inline-block;
 }
 
-/* Textareas longos (observações, JSON, etc) - base igual pros dois */
 .readonly-multiline,
 .json-final {
     width: 100%;
     padding: 6px 8px;
     border-radius: 6px;
     border: 1px solid #333;
-    background: #111;      /* fundo escuro */
-    color: #f0f0f0;        /* texto claro */
+    background: #111;
+    color: #f0f0f0;
     box-sizing: border-box;
     resize: vertical;
     white-space: pre-wrap;
@@ -163,7 +161,7 @@ body {
     display: flex;
     flex-direction: column;
     gap: 6px;
-    width: 90px; /* ajusta se quiser mais largo/estreito */
+    width: 90px;
 }
 
 .card-extract-buttons .btn-secondary {
@@ -435,7 +433,7 @@ body {
 
 /* Toggle "JSON gerado (original)" com o mesmo tamanho de label */
 .json-original-toggle > summary {
-    font-size: 12px;      /* igual ao .field label */
+    font-size: 12px;
     font-weight: bold;
     color: #cccccc;
     cursor: pointer;
@@ -467,9 +465,9 @@ button {
     transform: scale(0.97);
 }
 
-/* Só pra dar um respiro no bloco da imagem */
+/* Bloco da imagem do banner */
 .image-preview-block {
-    margin-bottom: 10px;  /* cria espaço antes do "JSON gerado" */
+    margin-bottom: 10px;
 }
 
 /* Observações gerais de card */
@@ -482,19 +480,16 @@ button {
 
 /* === PROCESSOS (Testes / QA / Farol / Conclusão) === */
 
-/* Wrapper interno da área de processos (dentro da .subsection) */
 .process-section {
     padding: 4px 0 6px;
 }
 
-/* (a classe existe mas não usamos mais no HTML, pode ficar sem problema) */
 .process-section-title {
     font-size: 14px;
     font-weight: 600;
     margin: 4px 0 8px;
 }
 
-/* status como pill verde, começa escondido; JS muda display para "block" */
 .process-status {
     padding: 5px 10px 0px 0px;
     font-size: 12px;
@@ -505,7 +500,7 @@ button {
     white-space: nowrap;
 }
 
-/* Linha que junta os botões Sim/Não com o status (PRONTO PARA QA!, ENVIAR!, etc.) */
+/* Linha que junta os botões Sim/Não com o status */
 .process-row {
     display: flex;
     align-items: center;
@@ -560,12 +555,11 @@ button {
 
 /* === LEMBRETES === */
 
-/* Deixa o accordion de lembretes um pouco mais colado nas anotações */
 .reminders-accordion {
     margin-top: 6px;
 }
 
-/* Textarea de lembretes: um pouco mais “compacta” visualmente */
+/* Textarea de lembretes */
 .reminders-text {
     font-size: 12px;
     line-height: 1.4;
