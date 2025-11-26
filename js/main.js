@@ -16,33 +16,94 @@ import {
 } from "./renderers.js";
 
 // ===== Texto padrão global de Lembretes (usado na primeira vez) =====
-const DEFAULT_REMINDERS_TEXT = `Início de Task | Checklist 
-- Colocar o Owner da task para você e mover para InProgress/Doing
+const DEFAULT_REMINDERS_TEXT = `CARD
 
-Journey | Checklist 
-- Colocar o nome da Journey
-- Colocar as Tags - [Marca: XP] [Squad Responsável: B2B]
-- Colocar a data e o horario de saida
-- Se tiver, colocar o tempo de descanso/reentrada(allow reentrance e wait period)
+Card Inicio | Checklist 
+- Colocar o Owner do card para você e mover para InProgress/Doing
+- Ver se da pra duplicar algumas partes ao inves de criar do 0
 
-Push | Checklist 
-- Nunca esquecer o Condition de Optin
-- Verificar a o card/copy para entender se o Push realmente é uma Offer, ou se é um Relationship, para acertar o Condition de Optin
+Card Pronto para QA | Checklist
+- Inserir a mensagem do farol no card
+- Mover o card para a coluna "Testes & QA" no board
+- Mandar a mensagem de QA no espaço "Squad B2B + XP Empresas"
 
-Banner | Checklist 
-- Se a pagina do banner for a N1_LOGIN_APP, fazer o teste em outra página temporário, senão o seu teste vai aparecer para todos na área de Login
+Card QA Aprovado | Checklist
+- Validar se pode fazer o envio (confirmando data e horário)
+
+Card Envio Aprovado | Checklist
+- Validar a Checklist do canal
+- Enviar e vigiar a volumetria de entrega
+
+ Card Fim | Checklist
+- Colocar no card as horas em "Remaining Work", alterar os Owners e mover para a coluna de Done
+
+MACROS
+
+Journey | Checklist
+- Criação:
+  - Colocar o nome da Journey
+  - Colocar as Tags - [Marca: XP] [Squad Responsável: B2B]
+  - Colocar a base inicial correta
+  - Verificar se o Namespace da base está como "Trading Account Hash (TradingAccountHash)"
+  - Colocar a data e o horario de saida
+  - Se tiver, colocar o tempo de descanso/reentrada(allow reentrance e wait period)
 
 Audiência | Checklist 
-- Colocar o nome da Audiência
-- Colocar as Tags - [Area: Revenue] [Squad Responsável: B2B]
-- Validar o tipo da base em "Evalutation method"(Streaming/Batch)
-- Quando for puxar Atributos/Eventos, verificar o PATH de onde você está pegando, pois existem atributos/eventos com nomes repetidos
-- Salvar como draft e validar antes de ativar
-- No caso de Eventos:
-  - Colocar como "Today" ou alguma data, na opção acima dos eventos
-  - Ccolocar "OR" entre os eventos "Proposition Display" e "Analytics Select Content Event"
-  - Em "Event Rules", verificar se é "Include" ou "Exclude"
-  - Dentro do "At least 1" em "Event Rules", verificar se algo, por exemplo, o "Activity Identifier" está como "equals", ou o "pageName" está como "contains", etc.`;
+- Criação:
+  - Colocar o nome da Audiência
+  - Colocar as Tags - [Area: Revenue] [Squad Responsável: B2B]
+  - Validar o tipo da base em "Evalutation method"(Streaming/Batch)
+  - Quando for puxar Atributos/Eventos, verificar o PATH de onde você está pegando, pois existem atributos/eventos com nomes repetidos
+  - Salvar como draft e validar antes de ativar
+  - Eventos:
+    - Colocar como "Today" ou alguma data, na opção acima dos eventos
+    - Ccolocar "OR" entre os eventos "Proposition Display" e "Analytics Select Content Event"
+    - Em "Event Rules", verificar se é "Include" ou "Exclude"
+    - Dentro do "At least 1" em "Event Rules", verificar se algo, por exemplo, o "Activity Identifier" está como "equals", ou o "pageName" está como "contains", etc.
+
+CANAIS
+
+Push | Checklist
+- Criação:
+  - Nunca esquecer o Condition de Optin (marcar sempre a checkbox do "Show path for other cases than the one(s) above")
+  - Verificar a o card/copy para entender se o Push realmente é uma Offer, ou se é um Relationship, para acertar o Condition de Optin
+  - Marcar o campo de Push Configuration(XP_Push)
+- Pós Teste:
+  - Desativar o modo de teste
+  - Confirmar a data e horário do push no Teams
+- Envio:
+  - Verificar a Checklist da Journey
+
+Banner | Checklist
+- Criação:
+  - Marcar sempre como "Personalized offer"
+  - Step1:
+    - Marcar como "XP" o Collection qualifiers
+  - Step2:
+    - Marcar sempre a base de teste "TT B2B"(em "By defined decision rule") antes
+    - Colocar prioridade pra teste(2000 ou 3000 ou 5000)
+    - Colocar os Cappings de "Impression" e "Clicks"
+  - Step3:
+    - Colocar em "Representation" sempre como "Mobile" no Channel
+    - Sempre verificar se a Language está como "Portuguese (Brazil)"
+  - Step4:
+    - Sempre salvar como Draft primeiro
+- Pós Criação:
+  - Incluir o numero_do_offerID depois de criar o Banner
+- Testes:
+  - Verificar se a dataInicio não está no futuro, porque se estiver o seu teste nunca vai aparecer
+  - Se a pagina do banner for a N1_LOGIN_APP, fazer o teste em outra página temporário, senão o seu teste vai aparecer para todos na área de Login
+- Pós Teste:
+  - Desativar o banner
+  - Colocar a dataInicio original(caso tiver alterado para teste)
+  - Verificar se o horário está correto
+  - Colocar a base original
+  - Perguntar a prioridade original
+
+Marketing Screen | Checklist
+- Criação:
+  - Verificar se os links estão todos funcionando
+  - Verificar se precisa colocar os gatilhos de clicks(moments)`;
 
 // ===== helpers de DOM básicos =====
 
