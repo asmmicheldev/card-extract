@@ -15,6 +15,35 @@ import {
   renderChannelProcesses
 } from "./renderers.js";
 
+// ===== Texto padrão global de Lembretes (usado na primeira vez) =====
+const DEFAULT_REMINDERS_TEXT = `Início de Task | Checklist 
+- Colocar o Owner da task para você e mover para InProgress/Doing
+
+Journey | Checklist 
+- Colocar o nome da Journey
+- Colocar as Tags - [Marca: XP] [Squad Responsável: B2B]
+- Colocar a data e o horario de saida
+- Se tiver, colocar o tempo de descanso/reentrada(allow reentrance e wait period)
+
+Push | Checklist 
+- Nunca esquecer o Condition de Optin
+- Verificar a o card/copy para entender se o Push realmente é uma Offer, ou se é um Relationship, para acertar o Condition de Optin
+
+Banner | Checklist 
+- Se a pagina do banner for a N1_LOGIN_APP, fazer o teste em outra página temporário, senão o seu teste vai aparecer para todos na área de Login
+
+Audiência | Checklist 
+- Colocar o nome da Audiência
+- Colocar as Tags - [Area: Revenue] [Squad Responsável: B2B]
+- Validar o tipo da base em "Evalutation method"(Streaming/Batch)
+- Quando for puxar Atributos/Eventos, verificar o PATH de onde você está pegando, pois existem atributos/eventos com nomes repetidos
+- Salvar como draft e validar antes de ativar
+- No caso de Eventos:
+  - Colocar como "Today" ou alguma data, na opção acima dos eventos
+  - Ccolocar "OR" entre os eventos "Proposition Display" e "Analytics Select Content Event"
+  - Em "Event Rules", verificar se é "Include" ou "Exclude"
+  - Dentro do "At least 1" em "Event Rules", verificar se algo, por exemplo, o "Activity Identifier" está como "equals", ou o "pageName" está como "contains", etc.`;
+
 // ===== helpers de DOM básicos =====
 
 function setFieldValue(prefix, tabId, value) {
@@ -80,6 +109,12 @@ function createTabFromState(tabId, data) {
   content.className = "section";
   content.id = "content_" + tabId;
 
+  // texto atual de lembretes: se global estiver vazio, usa o padrão
+  const remindersText =
+    (tabsState.remindersText && tabsState.remindersText.trim() !== "")
+      ? tabsState.remindersText
+      : DEFAULT_REMINDERS_TEXT;
+
   content.innerHTML = `
     <h2>Card</h2>
     <div class="card-row">
@@ -137,37 +172,10 @@ function createTabFromState(tabId, data) {
       <div id="lembretesWrap_${tabId}" class="accordion-body">
         <div class="field field-full">
           <textarea
+            id="reminders_${tabId}"
             class="readonly-multiline reminders-text"
             rows="12"
-            readonly>
-Início de Task | Checklist 
-- Colocar o Owner da task para você e mover para InProgress/Doing
-
-Journey | Checklist 
-- Colocar o nome da Journey
-- Colocar as Tags - [Marca: XP] [Squad Responsável: B2B]
-- Colocar a data e o horario de saida
-- Se tiver, colocar o tempo de descanso/reentrada(allow reentrance e wait period)
-
-Push | Checklist 
-- Nunca esquecer o Condition de Optin
-- Verificar a o card/copy para entender se o Push realmente é uma Offer, ou se é um Relationship, para acertar o Condition de Optin
-
-Banner | Checklist 
-- Se a pagina do banner for a N1_LOGIN_APP, fazer o teste em outra página temporário, senão o seu teste vai aparecer para todos na área de Login
-
-Audiência | Checklist 
-- Colocar o nome da Audiência
-- Colocar as Tags - [Area: Revenue] [Squad Responsável: B2B]
-- Validar o tipo da base em "Evalutation method"(Streaming/Batch)
-- Quando for puxar Atributos/Eventos, verificar o PATH de onde você está pegando, pois existem atributos/eventos com nomes repetidos
-- Salvar como draft e validar antes de ativar
-- No caso de Eventos:
-  - Colocar como "Today" ou alguma data, na opção acima dos eventos
-  - Ccolocar "OR" entre os eventos "Proposition Display" e "Analytics Select Content Event"
-  - Em "Event Rules", verificar se é "Include" ou "Exclude"
-  - Dentro do "At least 1" em "Event Rules", verificar se algo, por exemplo, o "Activity Identifier" está como "equals", ou o "pageName" está como "contains", etc.
-          </textarea>
+            oninput="handleRemindersChange('${tabId}', this.value)">${remindersText}</textarea>
         </div>
       </div>
     </div>
@@ -423,6 +431,20 @@ function handleBaseChange(tabId, value) {
   saveState();
 }
 
+// LEMBRETES: handler global
+function handleRemindersChange(tabId, value) {
+  // atualiza o texto global
+  tabsState.remindersText = value;
+  saveState();
+
+  // opcional: sincroniza com outras abas abertas
+  document.querySelectorAll(".reminders-text").forEach(el => {
+    if (el.id !== `reminders_${tabId}`) {
+      el.value = value;
+    }
+  });
+}
+
 // ===================== CARD EXTRACT (export / import) =====================
 
 function handleCardExtractChange(tabId, value) {
@@ -589,3 +611,4 @@ window.handleCardExtractChange = handleCardExtractChange;
 window.exportCardState = exportCardState;
 window.importCardState = importCardState;
 window.handleBaseChange = handleBaseChange;
+window.handleRemindersChange = handleRemindersChange;
