@@ -34,6 +34,9 @@ export function loadState() {
   if (typeof tabsState.remindersText !== "string") {
     tabsState.remindersText = "";
   }
+  if (typeof tabsState.remindersText !== "string") {
+    tabsState.remindersText = "";
+  }
 
   const ids = Object.keys(tabsState.tabs)
     .map(id => parseInt(id.replace("tab_", ""), 10))

@@ -175,7 +175,7 @@ export function renderPushList(tabId, pushes) {
 
   pushes.forEach((p, index) => {
     const item = document.createElement("div");
-    item.className = "accordion-item";
+    item.className = "accordion-item accordion-tier2";
 
     const header = document.createElement("div");
     header.className = "accordion-header accordion-header-small";
@@ -363,7 +363,7 @@ export function renderBannerList(tabId, banners) {
 
   banners.forEach((b, index) => {
     const item = document.createElement("div");
-    item.className = "accordion-item";
+    item.className = "accordion-item accordion-tier2";
 
     const header = document.createElement("div");
     header.className = "accordion-header accordion-header-small";
@@ -951,7 +951,7 @@ export function renderMktScreenView(tabId, mkt) {
   geral.appendChild(qrBlock);
 
   const principalItem = document.createElement("div");
-  principalItem.className = "accordion-item";
+  principalItem.className = "accordion-item accordion-tier3";
 
   const headerP = document.createElement("div");
   headerP.className = "accordion-header accordion-header-small";
@@ -982,7 +982,7 @@ export function renderMktScreenView(tabId, mkt) {
   if (mkt.blocos && mkt.blocos.length > 0) {
     mkt.blocos.forEach((b, index) => {
       const item = document.createElement("div");
-      item.className = "accordion-item";
+      item.className = "accordion-item accordion-tier2";
 
       const header = document.createElement("div");
       header.className = "accordion-header accordion-header-small";
@@ -1153,7 +1153,7 @@ function renderPushProcess(tabId, tabData) {
   const showMsgGrupo = getFlag(tabData, "pushAtivacaoApproved");
 
   const accItem = document.createElement("div");
-  accItem.className = "accordion-item";
+  accItem.className = "accordion-item accordion-tier3";
 
   const header = document.createElement("div");
   header.className = "accordion-header accordion-header-small";
@@ -1290,7 +1290,7 @@ function renderBannerProcessProcess(tabId, tabData) {
   const showMsgGrupo = getFlag(tabData, "bannerAtivacaoApproved");
 
   const accItem = document.createElement("div");
-  accItem.className = "accordion-item";
+  accItem.className = "accordion-item accordion-tier3";
 
   const header = document.createElement("div");
   header.className = "accordion-header accordion-header-small";
@@ -1416,7 +1416,7 @@ function renderMktProcess(tabId, tabData) {
   const showMsgGrupo = getFlag(tabData, "mktAtivacaoApproved");
 
   const accItem = document.createElement("div");
-  accItem.className = "accordion-item";
+  accItem.className = "accordion-item accordion-tier3";
 
   const header = document.createElement("div");
   header.className = "accordion-header accordion-header-small";

@@ -240,7 +240,7 @@ function createTabFromState(tabId, data) {
     </div>
 
     <!-- Farol -->
-    <div id="farolAccordion_${tabId}" class="accordion" style="display:none;">
+    <div id="farolAccordion_${tabId}" class="accordion accordion-tier4" style="display:none;">
       <div class="accordion-header" data-accordion-target="farolWrap_${tabId}">
         <span class="accordion-title">Farol</span>
         <span class="accordion-arrow">▸</span>
@@ -291,7 +291,7 @@ function createTabFromState(tabId, data) {
     </div>
 
     <!-- Push pai -->
-    <div class="accordion">
+    <div class="accordion accordion-tier1">
       <div class="accordion-header" data-accordion-target="pushWrap_${tabId}">
         <span class="accordion-title">Push</span>
         <span class="accordion-arrow">▸</span>
@@ -303,7 +303,7 @@ function createTabFromState(tabId, data) {
     </div>
 
     <!-- Banner pai -->
-    <div class="accordion">
+    <div class="accordion accordion-tier1">
       <div class="accordion-header" data-accordion-target="bannerWrap_${tabId}">
         <span class="accordion-title">Banner</span>
         <span class="accordion-arrow">▸</span>
@@ -315,7 +315,7 @@ function createTabFromState(tabId, data) {
     </div>
 
     <!-- MktScreen pai -->
-    <div class="accordion">
+    <div class="accordion accordion-tier1">
       <div class="accordion-header" data-accordion-target="mktWrap_${tabId}">
         <span class="accordion-title">Marketing Screen</span>
         <span class="accordion-arrow">▸</span>

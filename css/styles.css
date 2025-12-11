@@ -1,9 +1,68 @@
-/* === DARK MODE GERAL === */
+:root {
+    /* Fundo / superfícies */
+    --bg-app: #f5f5f7;          /* fundo geral (quase branco, não dói o olho) */
+    --bg-section: #ffffff;      /* bloco principal (cards grandes) */
+    --bg-surface: #f9fafb;      /* cartões internos / accordions */
+    --bg-surface-alt: #f3f4f6;  /* variação leve */
+
+    /* Bordas / sombra */
+    --border-subtle: #d4d4dd;
+    --border-strong: #b0b0c0;
+    --shadow-soft: 0 0 8px rgba(15, 23, 42, 0.08);
+
+    /* Texto */
+    --text-primary: #111827;
+    --text-secondary: #4b5563;
+    --text-muted: #6b7280;
+
+    /* Inputs / código */
+    --input-bg: #ffffff;
+    --input-readonly-bg: #f9fafb;
+    --input-border: #d1d5db;
+    --code-bg: #0b1120;
+    --code-border: #1f2937;
+
+    /* Acento (vermelho Adobe-ish) */
+    --accent-main: #e11d48;
+    --accent-main-soft: #fee2e2;
+    --accent-main-strong: #be123c;
+
+    /* Tabs */
+    --tab-bg: #e5e7eb;
+    --tab-bg-active: #e11d48;
+    --tab-border: #d4d4dd;
+    --tab-text: #374151;
+    --tab-text-active: #ffffff;
+
+    /* Chips / toggles */
+    --chip-bg: #f3f4f6;
+    --chip-border: #d1d5db;
+
+    /* Tiers (cores dos accordions) */
+
+    /* Tier 1 – blocos principais (Push, Banner, Marketing Screen) */
+    --tier1-bg: #fee2e2;          /* vermelho bem claro (fechado) */
+    --tier1-bg-active: #fecaca;   /* vermelho um pouco mais forte (aberto) */
+
+    /* Tier 2 – itens internos (Push 1, Banner 1, blocos Mkt) */
+    --tier2-bg: #dbeafe;          /* azul claro (fechado) */
+    --tier2-bg-active: #bfdbfe;   /* azul mais forte (aberto) */
+
+    /* Tier 3 – processos + “Principal” da MktScreen */
+    --tier3-bg: #fefce8;          /* amarelo bem claro (fechado) */
+    --tier3-bg-active: #fef3c7;   /* amarelo mais forte (aberto) */
+
+    /* Tier 4 – Farol: neutro/default */
+    --tier4-bg: var(--bg-surface);
+
+}
+
+/* Tema base: usa as variáveis acima */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
-    background: #0a0a0a;
-    color: #e5e5e5;
+    background: var(--bg-app);
+    color: var(--text-primary);
 }
 
 /* Container do conteúdo */
@@ -13,12 +72,12 @@ body {
 
 /* === SEÇÕES === */
 .section {
-    background: #1a1a1a;
+    background: var(--bg-section);
     padding: 20px;
     border-radius: 8px;
     margin-bottom: 20px;
-    border: 1px solid #2e2e2e;
-    box-shadow: 0 0 8px rgba(0,0,0,0.4);
+    border: 1px solid var(--border-subtle);
+    box-shadow: var(--shadow-soft);
 }
 
 /* Títulos das divisões (só usados em alguns pontos) */
@@ -62,7 +121,7 @@ body {
     display: block;
     margin-bottom: 4px;
     font-weight: bold;
-    color: #cccccc;
+    color: var(--text-secondary);
     font-size: 12px;
 }
 
@@ -72,15 +131,14 @@ body {
     padding: 6px 8px;
     border-radius: 6px;
     font-size: 13px;
-    border: 1px solid #333;
-    background: #111;
-    color: #f0f0f0;
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text-primary);
     box-sizing: border-box;
 }
 
 .readonly {
-    background: #151515;
-    border-color: #444;
+    background: var(--input-readonly-bg);
 }
 
 .input-inline {
@@ -93,9 +151,9 @@ body {
     width: 100%;
     padding: 6px 8px;
     border-radius: 6px;
-    border: 1px solid #333;
-    background: #111;
-    color: #f0f0f0;
+    border: 1px solid var(--input-border);
+    background: var(--input-readonly-bg);
+    color: var(--text-primary);
     box-sizing: border-box;
     resize: vertical;
     white-space: pre-wrap;
@@ -120,9 +178,9 @@ body {
     padding: 4px 8px;
     border-radius: 6px;
     font-size: 13px;
-    border: 1px solid #333;
-    background: #111;
-    color: #f0f0f0;
+    border: 1px solid var(--input-border);
+    background: var(--input-bg);
+    color: var(--text-primary);
     box-sizing: border-box;
     height: 70px;
     min-height: 70px;
@@ -193,7 +251,7 @@ body {
 .info-group {
     margin-top: 8px;
     font-size: 13px;
-    color: #d0d0d0;
+    color: var(--text-secondary);
 }
 
 .info-row {
@@ -205,12 +263,12 @@ body {
 
 .info-label {
     font-weight: 600;
-    color: #aaaaaa;
+    color: var(--text-muted);
     margin-right: 4px;
 }
 
 .info-value {
-    color: #e0e0e0;
+    color: var(--text-primary);
 }
 
 /* === METADADOS COMPACTOS (push / banner / mkt) === */
@@ -218,7 +276,7 @@ body {
 .meta-row {
     margin-top: 6px;
     font-size: 12px;
-    color: #cccccc;
+    color: var(--text-muted);
     line-height: 1.4;
     white-space: pre-wrap;
 }
@@ -226,8 +284,8 @@ body {
 /* === BLOCO DE CÓDIGO (JSON etc.) === */
 
 .code-block {
-    background: #050505;
-    border: 1px solid #333;
+    background: var(--input-readonly-bg); /* mesmo cinza dos campos readonly */
+    border: 1px solid var(--input-border);
     border-radius: 6px;
     padding: 6px 8px;
     font-family: Consolas, "Courier New", monospace;
@@ -236,16 +294,17 @@ body {
     overflow: auto;
     white-space: pre;
     box-sizing: border-box;
+    color: var(--text-primary);
 }
 
 /* === ABAS === */
 .tabs-container {
     display: flex;
     align-items: center;
-    background: #000;
+    background: var(--bg-surface);
     padding: 6px 12px;
     gap: 6px;
-    border-bottom: 1px solid #222;
+    border-bottom: 1px solid var(--border-subtle);
 }
 
 /* Aba padrão */
@@ -255,24 +314,23 @@ body {
     align-items: center;
     gap: 8px;
     padding: 8px 12px;
-    background: #222;
-    color: #bbb;
+    background: var(--tab-bg);
+    color: var(--tab-text);
     border-radius: 6px 6px 0 0;
-    border: 1px solid #333;
+    border: 1px solid var(--tab-border);
     cursor: pointer;
-    transition: background 0.25s ease;
+    transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 }
 
 .tab:hover {
-    background: #333;
-    color: #fff;
+    background: var(--bg-surface-alt);
 }
 
 /* Aba ativa */
 .tab.active {
-    background: #3b82f6;
-    color: #fff;
-    border-color: #3b82f6;
+    background: var(--tab-bg-active);
+    color: var(--tab-text-active);
+    border-color: var(--tab-bg-active);
 }
 
 /* Aba título (clicável) */
@@ -298,9 +356,9 @@ body {
 
 /* Botão "+" (add tab) */
 .add-tab {
-    background: #111;
-    color: #fff;
-    border: 1px solid #333;
+    background: transparent;
+    color: var(--tab-text);
+    border: 1px dashed var(--tab-border);
     padding: 6px 14px;
 }
 
@@ -332,8 +390,8 @@ body {
 /* === CARDS INTERNOS (conteúdo dentro de accordions) === */
 
 .subsection {
-    background: #111;
-    border: 1px solid #2b2b2b;
+    background: var(--bg-surface-alt);
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
     padding: 10px 10px 4px 10px;
     margin-bottom: 8px;
@@ -350,10 +408,10 @@ body {
 /* === ACCORDION / TOGGLES === */
 
 .accordion {
-    border: 1px solid #2b2b2b;
+    border: 1px solid var(--border-subtle);
     border-radius: 8px;
     margin-bottom: 12px;
-    background: #111;
+    background: var(--bg-surface);
 }
 
 .accordion-header {
@@ -364,15 +422,17 @@ body {
     padding: 8px 9px;
     cursor: pointer;
     user-select: none;
+    background: var(--bg-surface);
+    transition: background 0.15s ease, filter 0.15s ease;
 }
 
 .accordion-header:hover {
-    background: #1f1f1f;
+    background: var(--bg-surface-alt);
 }
 
 .accordion-title {
     font-weight: 600;
-    color: #f0f0f0;
+    color: var(--text-primary);
     font-size: 14px;
 }
 
@@ -400,7 +460,7 @@ body {
 .accordion-body {
     display: none;
     padding: 6px 10px 10px;
-    border-top: 1px solid #2b2b2b;
+    border-top: 1px solid var(--border-subtle);
 }
 
 .accordion-body.open {
@@ -410,14 +470,58 @@ body {
 .accordion-item {
     margin-bottom: 6px;
     border-radius: 6px;
-    border: 1px solid #222;
-    background: #151515;
+    border: 1px solid var(--border-subtle);
+    background: var(--bg-surface-alt);
 }
 
 /* Header menor para itens internos (Push 1, Push 2, etc.) */
 .accordion-header-small {
     padding: 6px 10px;
     font-size: 13px;
+}
+
+/* === Hierarquia de tiers (cores diferentes) === */
+
+/* Tier 1 – blocos principais (Push, Banner, Marketing Screen) */
+.accordion-tier1 > .accordion-header {
+    background: var(--tier1-bg);
+    border-bottom: 1px solid var(--tier1-border);
+}
+.accordion-tier1 > .accordion-header.open {
+    background: var(--tier1-bg-active);   /* mais vermelho quando aberto */
+}
+
+/* Tier 2 – Push 1, Push 2, Banners individuais, blocos da MktScreen */
+.accordion-tier2 > .accordion-header {
+    background: var(--tier2-bg);
+    border-bottom: 1px solid var(--tier2-border);
+}
+.accordion-tier2 > .accordion-header.open {
+    background: var(--tier2-bg-active);   /* mais azul quando aberto */
+}
+
+/* Tier 3 – Testes, QA e Envio/Ativação + Principal da MktScreen */
+.accordion-tier3 > .accordion-header {
+    background: var(--tier3-bg);
+    border-bottom: 1px solid var(--tier3-border);
+}
+.accordion-tier3 > .accordion-header.open {
+    background: var(--tier3-bg-active);   /* mais amarelo quando aberto */
+}
+
+/* Tier 4 – Farol, etc. */
+.accordion-tier4 > .accordion-header {
+    background: var(--tier4-bg);
+    border-bottom: 1px solid var(--tier4-border);
+}
+
+
+/* Texto dentro dos tiers */
+.accordion-tier1 .accordion-title,
+.accordion-tier2 .accordion-title,
+.accordion-tier3 .accordion-title,
+.accordion-tier4 .accordion-title {
+    color: var(--text-primary);
 }
 
 /* linha do Accessibility Text: textarea + botão lado a lado */
@@ -435,7 +539,7 @@ body {
 .json-original-toggle > summary {
     font-size: 12px;
     font-weight: bold;
-    color: #cccccc;
+    color: var(--text-secondary);
     cursor: pointer;
     margin-bottom: 4px;
 }
@@ -490,12 +594,15 @@ button {
     margin: 4px 0 8px;
 }
 
+/* Status tipo "PRONTO PARA QA!" / "ENVIAR!" / "CANAL CONCLUIDO!" */
 .process-status {
-    padding: 5px 10px 0px 0px;
     font-size: 12px;
     font-weight: 700;
-    color: #22c55e;
-    background: rgba(34,197,94,0.09);
+    color: #166534;        /* mesmo verde do botão "Sim" */
+    background: transparent;
+    border-radius: 0;
+    padding-top: 5px;
+    margin-left: 4px;      /* só um respiro do toggle */
     display: none;
     white-space: nowrap;
 }
@@ -518,13 +625,13 @@ button {
 .toggle-chip {
     padding: 4px 10px;
     border-radius: 6px;
-    border: 1px solid #444;
-    background: #111;
-    color: #e5e5e5;
+    border: 1px solid var(--chip-border);
+    background: var(--chip-bg);
+    color: var(--text-primary);
     font-size: 12px;
     cursor: pointer;
     user-select: none;
-    transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease;
+    transition: background 0.15s ease, border-color 0.15s ease, transform 0.05s ease, filter 0.15s ease;
 }
 
 .toggle-chip.no.active {
@@ -537,6 +644,12 @@ button {
     background: #166534;
     border-color: #22c55e;
     color: #fff;
+}
+
+/* Estado selecionado: deixa o chip levemente mais “carregado” */
+.toggle-chip.active {
+    filter: brightness(0.9);          /* escurece ~10% */
+    box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
 }
 
 .toggle-chip:active {
