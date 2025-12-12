@@ -25,8 +25,17 @@ export function parseTitulo(linhas) {
   if (tituloLinha) {
     const partes = tituloLinha.split(" - ");
     if (partes.length >= 3) {
-      nome = partes[1];
-      desc = partes.slice(2).join(" - ");
+      // XP - CODIGO - Descrição...
+      nome = partes[1].trim();
+      desc = partes.slice(2).join(" - ").trim();
+    } else if (partes.length === 2) {
+      // RICO - CODIGO   |   CLEAR - CODIGO  (sem descrição)
+      nome = partes[1].trim();
+      desc = partes[1].trim(); // aba e "Nome do Card" não ficam vazios
+    } else {
+      // fallback extremo: tudo vai pra nome
+      nome = tituloLinha.trim();
+      desc = "";
     }
   }
 

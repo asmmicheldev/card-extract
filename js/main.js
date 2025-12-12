@@ -74,8 +74,8 @@ function createTabFromState(tabId, data) {
 
   const title = document.createElement("span");
   title.className = "tab-title";
-  // quando recarregar do localStorage, prefere sempre o fullTitle
-  title.textContent = data.fullTitle || data.title || "Card";
+  // texto da aba = título curto; se não tiver, cai no fullTitle antigo
+  title.textContent = data.title || data.fullTitle || "Card";
 
   const close = document.createElement("span");
   close.className = "close-tab";
@@ -389,11 +389,12 @@ function processCard(tabId, texto) {
   setFieldValue("nome_", tabId, titulo.nome);
   setFieldValue("base_", tabId, dados.base);
 
-  const tabTitleText = buildTabTitleFromTitulo(titulo);
+  const tabDisplayTitle = buildTabTitleFromTitulo(titulo);
+  const fullTitle = titulo.tituloCompleto || tabDisplayTitle;
 
-  const tabTitle = document.querySelector(`#${tabId} .tab-title`);
-  if (tabTitle) {
-    tabTitle.textContent = tabTitleText;
+  const tabTitleEl = document.querySelector(`#${tabId} .tab-title`);
+  if (tabTitleEl) {
+    tabTitleEl.textContent = tabDisplayTitle;
   }
 
   setTextValue("desc_" + tabId, titulo.descricao);
@@ -403,12 +404,13 @@ function processCard(tabId, texto) {
 
   renderCanais(tabId, info.canais);
 
-  tabData.title       = tabTitleText; // título da aba = linha completa
-  tabData.input       = texto;
-  tabData.nome        = titulo.nome;
-  tabData.fullTitle   = tabTitleText; // mantém fullTitle consistente
-  tabData.descricao   = titulo.descricao;
-  tabData.cardUrl     = titulo.cardUrl || "";
+  tabData.title          = tabDisplayTitle;       // texto curto da aba
+  tabData.input          = texto;
+  tabData.nome           = titulo.nome;
+  tabData.fullTitle      = fullTitle;            // nome completo
+  tabData.tituloCompleto = titulo.tituloCompleto || "";
+  tabData.descricao      = titulo.descricao;
+  tabData.cardUrl        = titulo.cardUrl || "";
 
   tabData.area        = info.area;
   tabData.solicitante = info.solicitante;
@@ -515,16 +517,29 @@ function importCardState(tabId) {
   setFieldValue("base_", tabId, obj.base || "");
 
   const tabTitle = document.querySelector(`#${tabId} .tab-title`);
-  const importedTitle =
-    obj.fullTitle || obj.title || obj.nome || "Card";
+
+  // fullTitle = nome completo (quando existir no JSON)
+  const fullTitle =
+    obj.fullTitle ||
+    obj.tituloCompleto ||
+    obj.title ||
+    obj.nome ||
+    "Card";
+
+  // title = texto curto da aba (descrição / nome reduzido)
+  const displayTitle =
+    obj.title ||
+    obj.descricao ||
+    obj.nome ||
+    fullTitle;
 
   if (tabTitle) {
-    tabTitle.textContent = importedTitle;
+    tabTitle.textContent = displayTitle;
   }
 
-  // garante que o estado fique padronizado
-  obj.fullTitle = importedTitle;
-  obj.title = importedTitle;
+  obj.fullTitle = fullTitle;
+  obj.tituloCompleto = obj.tituloCompleto || fullTitle;
+  obj.title = displayTitle;
 
   setTextValue("desc_" + tabId, obj.descricao || "");
   setTextValue("solicitanteText_" + tabId, obj.solicitante || "");

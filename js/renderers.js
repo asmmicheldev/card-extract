@@ -80,12 +80,123 @@ function formatBannerDateTime(str) {
   return `${date} T ${hhStr}:${mmStr}`;
 }
 
+// ==== HELPERS DE DATA (wait X days + AM/PM) ====
+
+// parseia só a parte de data (YYYY-MM-DD) para cálculo de "wait X days"
+function parseDateOnly(raw) {
+  if (!raw) return null;
+  const s = String(raw).trim();
+  if (!s) return null;
+
+  let datePart = s;
+
+  // aceita "2025-12-11T16:25" ou "2025-12-11 T 16:25"
+  if (s.includes("T")) {
+    datePart = s.split("T")[0].trim();
+  } else if (s.includes(" ")) {
+    const chunks = s.split(" ");
+    const candidate = chunks.find(c => c.includes("-"));
+    if (candidate) {
+      datePart = candidate.trim();
+    }
+  }
+
+  const [y, m, d] = datePart.split("-");
+  const year = parseInt(y, 10);
+  const month = parseInt(m, 10);
+  const day = parseInt(d, 10);
+  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) return null;
+
+  return new Date(Date.UTC(year, month - 1, day));
+}
+
+function diffInDays(prevRaw, currRaw) {
+  const d1 = parseDateOnly(prevRaw);
+  const d2 = parseDateOnly(currRaw);
+  if (!d1 || !d2) return null;
+  const msPerDay = 24 * 60 * 60 * 1000;
+  const diff = Math.round((d2.getTime() - d1.getTime()) / msPerDay);
+  return diff;
+}
+
+// monta o texto "(wait X days)" para Push 2+
+function getWaitLabelForPush(pushes, index) {
+  if (!Array.isArray(pushes) || index <= 0) return "";
+  const current = pushes[index];
+  const previous = pushes[index - 1];
+  if (!current || !previous) return "";
+
+  const currRaw = current.dataInicioOriginal || current.dataInicio || "";
+  const prevRaw = previous.dataInicioOriginal || previous.dataInicio || "";
+  const diff = diffInDays(prevRaw, currRaw);
+  if (diff == null || diff <= 0) return "";
+
+  const label = diff === 1 ? "day" : "days";
+  return ` (wait ${diff} ${label})`;
+}
+
 // Monta a URL de QR Code a partir do deeplink
 function buildQrCodeUrl(link) {
   if (!link) return "";
   const encoded = encodeURIComponent(link.trim());
   return `https://api.qrserver.com/v1/create-qr-code/?data=${encoded}&size=300x300`;
 }
+
+
+// versão com dica em AM/PM em formato americano, para datas originais de banner
+function formatBannerDateTimeWithHint(str) {
+  const base = formatBannerDateTime(str);
+  if (!base) return "";
+
+  const raw = (str || "").trim();
+  if (!raw) return base;
+
+  let datePart = "";
+  let timePart = "";
+
+  if (raw.includes("T")) {
+    const [d, t] = raw.split("T");
+    datePart = (d || "").trim();
+    timePart = (t || "").trim();
+  } else {
+    const chunks = raw.split(" ");
+    const candidate = chunks.find(c => c.includes("-"));
+    if (!candidate) return base;
+    datePart = candidate.trim();
+    timePart = (chunks[chunks.indexOf(candidate) + 1] || "").trim();
+  }
+
+  const [y, m, d] = datePart.split("-");
+  const year = parseInt(y, 10);
+  const month = parseInt(m, 10);
+  const day = parseInt(d, 10);
+  if (Number.isNaN(year) || Number.isNaN(month) || Number.isNaN(day)) return base;
+
+  let hh = 0;
+  let mm = 0;
+  if (timePart) {
+    const [hhStr, mmStr] = timePart.split(":");
+    hh = parseInt(hhStr || "0", 10);
+    mm = parseInt((mmStr || "0").substring(0, 2), 10);
+    if (Number.isNaN(hh) || Number.isNaN(mm)) {
+      hh = 0;
+      mm = 0;
+    }
+  }
+
+  const isPM = hh >= 12;
+  let hour12 = hh % 12;
+  if (hour12 === 0) hour12 = 12;
+
+  const mmPad = String(mm).padStart(2, "0");
+  const monthUS = String(month).padStart(2, "0");
+  const dayUS = String(day).padStart(2, "0");
+  const suffix = isPM ? "PM" : "AM";
+
+  const usPart = `${monthUS}/${dayUS}/${year}, ${hour12}:${mmPad} ${suffix}`;
+  return `${base} (${usPart})`;
+}
+
 
 /* ====================================================================== */
 /* =============== RENDERIZAÇÃO PUSH / BANNER / MKTSCREEN =============== */
@@ -134,9 +245,10 @@ export function renderPushList(tabId, pushes) {
     const block = document.createElement("div");
     block.className = "subsection";
 
-    // Data de início original (somente leitura)
+    // Data de início original (somente leitura) + "wait X days"
     const originalRaw = p.dataInicioOriginal || p.dataInicio || "";
     const originalFormatted = originalRaw ? formatBannerDateTime(originalRaw) : "";
+    const waitLabel = getWaitLabelForPush(pushes, index);
 
     const hasMeta = originalFormatted || p.ctaType || p.observacao !== undefined;
     if (hasMeta) {
@@ -152,7 +264,7 @@ export function renderPushList(tabId, pushes) {
         lbl.textContent = "Data de Início (Original):";
         const val = document.createElement("span");
         val.className = "info-value";
-        val.textContent = originalFormatted;
+        val.textContent = originalFormatted + waitLabel;
         row.appendChild(lbl);
         row.appendChild(val);
       }
@@ -414,7 +526,7 @@ export function renderBannerList(tabId, banners) {
       lbl.textContent = "Data de Início (Original):";
       const val = document.createElement("span");
       val.className = "info-value";
-      val.textContent = formatBannerDateTime(startOriginal);
+      val.textContent = formatBannerDateTimeWithHint(startOriginal);
       rowDates.appendChild(lbl);
       rowDates.appendChild(val);
     }
@@ -427,7 +539,7 @@ export function renderBannerList(tabId, banners) {
       lbl.textContent = "Data de Fim (Original):";
       const val = document.createElement("span");
       val.className = "info-value";
-      val.textContent = formatBannerDateTime(endOriginal);
+      val.textContent = formatBannerDateTimeWithHint(endOriginal);
       rowDates.appendChild(lbl);
       rowDates.appendChild(val);
     }
