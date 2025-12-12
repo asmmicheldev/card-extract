@@ -41,20 +41,23 @@
     /* Tiers (cores dos accordions) */
 
     /* Tier 1 – blocos principais (Push, Banner, Marketing Screen) */
-    --tier1-bg: #fee2e2;          /* vermelho bem claro (fechado) */
-    --tier1-bg-active: #fecaca;   /* vermelho um pouco mais forte (aberto) */
+    --tier1-bg: #fee2e2;         /* vermelho bem claro (fechado) */
+    --tier1-bg-active: #fecaca;  /* vermelho um pouco mais forte (aberto) */
+    --tier1-border: #fecaca;
 
     /* Tier 2 – itens internos (Push 1, Banner 1, blocos Mkt) */
-    --tier2-bg: #dbeafe;          /* azul claro (fechado) */
-    --tier2-bg-active: #bfdbfe;   /* azul mais forte (aberto) */
+    --tier2-bg: #dbeafe;         /* azul claro (fechado) */
+    --tier2-bg-active: #bfdbfe;  /* azul mais forte (aberto) */
+    --tier2-border: #bfdbfe;
 
     /* Tier 3 – processos + “Principal” da MktScreen */
-    --tier3-bg: #fefce8;          /* amarelo bem claro (fechado) */
-    --tier3-bg-active: #fef3c7;   /* amarelo mais forte (aberto) */
+    --tier3-bg: #fefce8;         /* amarelo bem claro (fechado) */
+    --tier3-bg-active: #fef3c7;  /* amarelo mais forte (aberto) */
+    --tier3-border: #fef3c7;
 
     /* Tier 4 – Farol: neutro/default */
     --tier4-bg: var(--bg-surface);
-
+    --tier4-border: var(--border-subtle);
 }
 
 /* Tema base: usa as variáveis acima */
@@ -159,17 +162,36 @@ body {
     white-space: pre-wrap;
 }
 
-/* Accessibility Text / Anotações */
+/* Multiline padrão */
 .readonly-multiline {
     min-height: 60px;
     font-size: 13px;
 }
 
-/* JSON Final */
+/* JSON Final (blocos de código editáveis) */
 .json-final {
     min-height: 120px;
     font-family: Consolas, "Courier New", monospace;
     font-size: 12px;
+}
+
+/* Textarea curta para Accessibility Text (1 linha visual, sem resize) */
+.acc-textarea {
+    min-height: 28px;
+    max-height: 28px;
+    height: 28px;
+    resize: none;      /* não deixa puxar */
+}
+
+/* Textarea maior para Mensagem do Farol (~10 linhas) */
+.farol-text {
+    min-height: 180px;
+}
+
+/* Classe efetivamente usada no Farol */
+.farol-textarea {
+    min-height: 360px;          /* já tínhamos aumentado antes */
+    background: var(--input-bg); /* mesmo fundo "oficial" */
 }
 
 /* Entrada do card: 1 linha só (usada para Card Original e Card Extract) */
@@ -515,7 +537,6 @@ body {
     border-bottom: 1px solid var(--tier4-border);
 }
 
-
 /* Texto dentro dos tiers */
 .accordion-tier1 .accordion-title,
 .accordion-tier2 .accordion-title,
@@ -571,7 +592,8 @@ button {
 
 /* Bloco da imagem do banner */
 .image-preview-block {
-    margin-bottom: 10px;
+    margin-top: -10px;   /* diminui espaço logo após o Accessibility Text */
+    margin-bottom: 16px; /* aumenta um pouco o espaço antes dos JSONs */
 }
 
 /* Observações gerais de card */
@@ -579,7 +601,8 @@ button {
     width: 100%;
     resize: vertical;
     max-height: 320px;
-    min-height: 32px;
+    min-height: 160px;
+    background: var(--input-bg); /* mesmo fundo "oficial" de input */
 }
 
 /* === PROCESSOS (Testes / QA / Farol / Conclusão) === */
@@ -664,17 +687,4 @@ button {
 
 .link-card:hover {
     text-decoration: underline;
-}
-
-/* === LEMBRETES === */
-
-.reminders-accordion {
-    margin-top: 6px;
-}
-
-/* Textarea de lembretes */
-.reminders-text {
-    font-size: 12px;
-    line-height: 1.4;
-    min-height: 500px;
 }

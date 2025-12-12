@@ -15,96 +15,6 @@ import {
   renderChannelProcesses
 } from "./renderers.js";
 
-// ===== Texto padrão global de Lembretes =====
-const DEFAULT_REMINDERS_TEXT = `CARD
-
-Card Inicio | Checklist 
-- Colocar o Owner do card para você e mover para InProgress/Doing
-- Ver se da pra duplicar algumas partes ao inves de criar do 0
-
-Card Pronto para QA | Checklist
-- Inserir a mensagem do farol no card
-- Mover o card para a coluna "Testes & QA" no board
-- Mandar a mensagem de QA no espaço "Squad B2B + XP Empresas"
-
-Card QA Aprovado | Checklist
-- Validar se pode fazer o envio (confirmando data e horário)
-
-Card Envio Aprovado | Checklist
-- Validar a Checklist do canal
-- Enviar e vigiar a volumetria de entrega
-
- Card Fim | Checklist
-- Colocar no card as horas em "Remaining Work", alterar os Owners e mover para a coluna de Done
-
-MACROS
-
-Journey | Checklist
-- Criação:
-  - Colocar o nome da Journey
-  - Colocar as Tags - [Marca: XP] [Squad Responsável: B2B]
-  - Colocar a base inicial correta
-  - Verificar se o Namespace da base está como "Trading Account Hash (TradingAccountHash)"
-  - Colocar a data e o horario de saida
-  - Se tiver, colocar o tempo de descanso/reentrada(allow reentrance e wait period)
-
-Audiência | Checklist 
-- Criação:
-  - Colocar o nome da Audiência
-  - Colocar as Tags - [Area: Revenue] [Squad Responsável: B2B]
-  - Validar o tipo da base em "Evalutation method"(Streaming/Batch)
-  - Quando for puxar Atributos/Eventos, verificar o PATH de onde você está pegando, pois existem atributos/eventos com nomes repetidos
-  - Salvar como draft e validar antes de ativar
-  - Eventos:
-    - Colocar como "Today" ou alguma data, na opção acima dos eventos
-    - Ccolocar "OR" entre os eventos "Proposition Display" e "Analytics Select Content Event"
-    - Em "Event Rules", verificar se é "Include" ou "Exclude"
-    - Dentro do "At least 1" em "Event Rules", verificar se algo, por exemplo, o "Activity Identifier" está como "equals", ou o "pageName" está como "contains", etc.
-
-CANAIS
-
-Push | Checklist
-- Criação:
-  - Nunca esquecer o Condition de Optin (marcar sempre a checkbox do "Show path for other cases than the one(s) above")
-  - Verificar a o card/copy para entender se o Push realmente é uma Offer, ou se é um Relationship, para acertar o Condition de Optin
-  - Marcar o campo de Push Configuration(XP_Push)
-- Pós Teste:
-  - Desativar o modo de teste
-  - Confirmar a data e horário do push no Teams
-- Envio:
-  - Verificar a Checklist da Journey
-
-Banner | Checklist
-- Criação:
-  - Marcar sempre como "Personalized offer"
-  - Step1:
-    - Marcar como "XP" o Collection qualifiers
-  - Step2:
-    - Marcar sempre a base de teste "TT B2B"(em "By defined decision rule") antes
-    - Colocar prioridade pra teste(2000 ou 3000 ou 5000)
-    - Colocar os Cappings de "Impression" e "Clicks"
-  - Step3:
-    - Colocar em "Representation" sempre como "Mobile" no Channel
-    - Sempre verificar se a Language está como "Portuguese (Brazil)"
-  - Step4:
-    - Sempre salvar como Draft primeiro
-- Pós Criação:
-  - Incluir o numero_do_offerID depois de criar o Banner
-- Testes:
-  - Verificar se a dataInicio não está no futuro, porque se estiver o seu teste nunca vai aparecer
-  - Se a pagina do banner for a N1_LOGIN_APP, fazer o teste em outra página temporário, senão o seu teste vai aparecer para todos na área de Login
-- Pós Teste:
-  - Desativar o banner
-  - Colocar a dataInicio original(caso tiver alterado para teste)
-  - Verificar se o horário está correto
-  - Colocar a base original
-  - Perguntar a prioridade original
-
-Marketing Screen | Checklist
-- Criação:
-  - Verificar se os links estão todos funcionando
-  - Verificar se precisa colocar os gatilhos de clicks(moments)`;
-
 // ===== helpers de DOM =====
 
 function setFieldValue(prefix, tabId, value) {
@@ -169,11 +79,6 @@ function createTabFromState(tabId, data) {
   content.className = "section";
   content.id = "content_" + tabId;
 
-  const remindersText =
-    (tabsState.remindersText && tabsState.remindersText.trim() !== "")
-      ? tabsState.remindersText
-      : DEFAULT_REMINDERS_TEXT;
-
   content.innerHTML = `
     <h2>Card</h2>
     <div class="card-row">
@@ -210,43 +115,6 @@ function createTabFromState(tabId, data) {
             </button>
           </div>
         </div>
-      </div>
-    </div>
-
-    <h2>Anotações</h2>
-    <div class="field field-full">
-      <textarea
-        id="notes_${tabId}"
-        class="readonly-multiline notes-input"
-        rows="3"
-        oninput="handleNotesChange('${tabId}', this.value)">${data.anotacoes || ""}</textarea>
-    </div>
-
-    <!-- Lembretes -->
-    <div id="lembretesAccordion_${tabId}" class="accordion reminders-accordion">
-      <div class="accordion-header" data-accordion-target="lembretesWrap_${tabId}">
-        <span class="accordion-title">Lembretes</span>
-        <span class="accordion-arrow">▸</span>
-      </div>
-      <div id="lembretesWrap_${tabId}" class="accordion-body">
-        <div class="field field-full">
-          <textarea
-            id="reminders_${tabId}"
-            class="readonly-multiline reminders-text"
-            rows="12"
-            oninput="handleRemindersChange('${tabId}', this.value)">${remindersText}</textarea>
-        </div>
-      </div>
-    </div>
-
-    <!-- Farol -->
-    <div id="farolAccordion_${tabId}" class="accordion accordion-tier4" style="display:none;">
-      <div class="accordion-header" data-accordion-target="farolWrap_${tabId}">
-        <span class="accordion-title">Farol</span>
-        <span class="accordion-arrow">▸</span>
-      </div>
-      <div id="farolWrap_${tabId}" class="accordion-body">
-        <div id="farol_container_${tabId}"></div>
       </div>
     </div>
 
@@ -287,6 +155,34 @@ function createTabFromState(tabId, data) {
           type="text"
           value="${data.base || ""}"
           oninput="handleBaseChange('${tabId}', this.value)">
+      </div>
+    </div>
+
+    <!-- Anotações como toggle (neutro, sem amarelo) -->
+    <div class="accordion accordion-tier4">
+      <div class="accordion-header" data-accordion-target="notesWrap_${tabId}">
+        <span class="accordion-title">Anotações</span>
+        <span class="accordion-arrow">▸</span>
+      </div>
+      <div id="notesWrap_${tabId}" class="accordion-body">
+        <div class="field field-full">
+          <textarea
+            id="notes_${tabId}"
+            class="readonly-multiline notes-input"
+            rows="4"
+            oninput="handleNotesChange('${tabId}', this.value)">${data.anotacoes || ""}</textarea>
+        </div>
+      </div>
+    </div>
+
+    <!-- Farol -->
+    <div id="farolAccordion_${tabId}" class="accordion accordion-tier4" style="display:none;">
+      <div class="accordion-header" data-accordion-target="farolWrap_${tabId}">
+        <span class="accordion-title">Farol</span>
+        <span class="accordion-arrow">▸</span>
+      </div>
+      <div id="farolWrap_${tabId}" class="accordion-body">
+        <div id="farol_container_${tabId}"></div>
       </div>
     </div>
 
@@ -349,6 +245,7 @@ function createTab() {
     input: "",
     cardExtract: "",
     nome: "",
+    fullTitle: "",
     descricao: "",
     cardUrl: "",
     area: "",
@@ -360,6 +257,7 @@ function createTab() {
     base: "",
     observacao: "",
     anotacoes: "",
+    farolText: "",
     pushes: [],
     banners: [],
     mktScreen: null,
@@ -402,18 +300,62 @@ function processCard(tabId, texto) {
   const dados  = parseDados(linhas);
   const comm   = parseCommunications(linhas);
 
-  const pushes  = comm.pushes;
-  const banners = comm.banners;
+  const pushes  = comm.pushes || [];
+  const banners = comm.banners || [];
   const mkt     = comm.mktScreen;
 
   const tabData = tabsState.tabs[tabId] || {};
   ensureProcessStructures(tabData);
 
+  // manter dados extras dos PUSH já existentes (data final / horário / etc.)
+  const oldPushes = tabData.pushes || [];
+  const mergedPushes = pushes.map((p, idx) => {
+    const old = oldPushes[idx] || {};
+
+    const newOriginal = p.dataInicioOriginal || p.dataInicio || "";
+    const original =
+      newOriginal ||
+      old.dataInicioOriginal ||
+      old.dataInicio ||
+      "";
+
+    const finalValue = old.dataInicio || p.dataInicio || "";
+
+    return {
+      ...p,
+      dataInicioOriginal: original,
+      dataInicio: finalValue,
+      horarioSaida: old.horarioSaida || ""
+    };
+  });
+
+  // manter dados extras dos BANNERS já existentes (datas finais, accText, jsonFinal, offerId)
   const oldBanners = tabData.banners || [];
   const mergedBanners = banners.map((b, idx) => {
     const old = oldBanners[idx] || {};
+
+    const originalInicio =
+      b.dataInicioOriginal ||
+      b.dataInicio ||
+      old.dataInicioOriginal ||
+      old.dataInicio ||
+      "";
+    const originalFim =
+      b.dataFimOriginal ||
+      b.dataFim ||
+      old.dataFimOriginal ||
+      old.dataFim ||
+      "";
+
+    const finalInicio = old.dataInicio || b.dataInicio || "";
+    const finalFim    = old.dataFim || b.dataFim || "";
+
     return {
       ...b,
+      dataInicioOriginal: originalInicio,
+      dataFimOriginal: originalFim,
+      dataInicio: finalInicio,
+      dataFim: finalFim,
       accText:   old.accText   || "",
       jsonFinal: old.jsonFinal || "",
       offerId:   old.offerId   || ""
@@ -438,6 +380,7 @@ function processCard(tabId, texto) {
   tabData.title       = titulo.nome || "Card";
   tabData.input       = texto;
   tabData.nome        = titulo.nome;
+  tabData.fullTitle   = titulo.tituloCompleto || titulo.nome || "Card";
   tabData.descricao   = titulo.descricao;
   tabData.cardUrl     = titulo.cardUrl || "";
 
@@ -451,13 +394,13 @@ function processCard(tabId, texto) {
   tabData.base        = dados.base;
   tabData.observacao  = dados.observacao;
 
-  tabData.pushes      = pushes;
+  tabData.pushes      = mergedPushes;
   tabData.banners     = mergedBanners;
   tabData.mktScreen   = mkt;
 
   tabsState.tabs[tabId] = tabData;
 
-  renderPushList(tabId, pushes);
+  renderPushList(tabId, mergedPushes);
   renderBannerList(tabId, mergedBanners);
   renderMktScreenView(tabId, mkt);
   renderChannelProcesses(tabId, tabData);
@@ -479,18 +422,6 @@ function handleBaseChange(tabId, value) {
   tabsState.tabs[tabId] = tabData;
   renderChannelProcesses(tabId, tabData);
   saveState();
-}
-
-// ===== LEMBRETES =====
-function handleRemindersChange(tabId, value) {
-  tabsState.remindersText = value;
-  saveState();
-
-  document.querySelectorAll(".reminders-text").forEach(el => {
-    if (el.id !== `reminders_${tabId}`) {
-      el.value = value;
-    }
-  });
 }
 
 // ===================== CARD EXTRACT (export / import) =====================
@@ -657,4 +588,3 @@ window.handleCardExtractChange = handleCardExtractChange;
 window.exportCardState = exportCardState;
 window.importCardState = importCardState;
 window.handleBaseChange = handleBaseChange;
-window.handleRemindersChange = handleRemindersChange;

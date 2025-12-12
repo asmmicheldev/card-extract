@@ -60,9 +60,9 @@ export function renderCanais(tabId, canaisString) {
   span.textContent = canaisAtivos.join("   ");
 }
 
-// -------- OCR / QR helpers --------
+// -------- helpers de datas / QR --------
 
-// Formata "2025-11-17T10:00" -> "2025-11-17 T 10:00 (10 AM)"
+// Formata "2025-11-17T10:00" -> "2025-11-17 T 10:00"
 function formatBannerDateTime(str) {
   if (!str) return "";
   str = str.trim();
@@ -75,18 +75,9 @@ function formatBannerDateTime(str) {
 
   const [hhStrRaw, mmStrRaw] = timeRaw.split(":");
   const hhStr = (hhStrRaw || "").padStart(2, "0");
-  const mmStr = (mmStrRaw ? mmStrRaw.substring(0, 2) : "00").padStart(2, "0");
+  const mmStr = (mmStrRaw || "00").substring(0, 2).padStart(2, "0");
 
-  const hh = parseInt(hhStr, 10);
-  if (isNaN(hh)) {
-    return `${date} T ${timeRaw}`;
-  }
-
-  const ampm = hh >= 12 ? "PM" : "AM";
-  let hour12 = hh % 12;
-  if (hour12 === 0) hour12 = 12;
-
-  return `${date} T ${hhStr}:${mmStr} (${hour12} ${ampm})`;
+  return `${date} T ${hhStr}:${mmStr}`;
 }
 
 // Monta a URL de QR Code a partir do deeplink
@@ -95,61 +86,6 @@ function buildQrCodeUrl(link) {
   const encoded = encodeURIComponent(link.trim());
   return `https://api.qrserver.com/v1/create-qr-code/?data=${encoded}&size=300x300`;
 }
-
-// OCR com Tesseract.js (client-side)
-async function fetchAccessibilityText(imageUrl, textarea, tabId) {
-  if (!textarea) return;
-
-  if (!imageUrl) {
-    textarea.value = "";
-    return;
-  }
-
-  if (!tabsState.ocrCache) {
-    tabsState.ocrCache = {};
-  }
-
-  const cached = tabsState.ocrCache[imageUrl];
-  if (cached) {
-    textarea.value = cached;
-    textarea.dispatchEvent(new Event("input", { bubbles: true }));
-    autoResizeTextareas(tabId);
-    return;
-  }
-
-  const T = window.Tesseract;
-  if (!T) {
-    textarea.value = "Tesseract.js não está carregado.";
-    return;
-  }
-
-  textarea.value = "Lendo texto da imagem...";
-
-  try {
-    const result = await T.recognize(imageUrl, "por", {
-      logger: m => console.log("tesseract", m)
-    });
-
-    const text = (result && result.data && result.data.text)
-      ? result.data.text.trim()
-      : "";
-
-    const finalText = text || "Nenhum texto encontrado.";
-
-    textarea.value = finalText;
-    tabsState.ocrCache[imageUrl] = finalText;
-    saveState();
-
-    textarea.dispatchEvent(new Event("input", { bubbles: true }));
-  } catch (e) {
-    console.error("Erro OCR (Tesseract):", e);
-    textarea.value = "Erro ao processar imagem.";
-  }
-
-  autoResizeTextareas(tabId);
-}
-
-
 
 /* ====================================================================== */
 /* =============== RENDERIZAÇÃO PUSH / BANNER / MKTSCREEN =============== */
@@ -170,8 +106,6 @@ export function renderPushList(tabId, pushes) {
   }
 
   if (accordion) accordion.style.display = "";
-
-  let lastDate = null;
 
   pushes.forEach((p, index) => {
     const item = document.createElement("div");
@@ -200,28 +134,11 @@ export function renderPushList(tabId, pushes) {
     const block = document.createElement("div");
     block.className = "subsection";
 
-    let decoratedDate = "";
-    if (p.dataInicio) {
-      const current = new Date(p.dataInicio.trim());
-      if (!isNaN(current.getTime())) {
-        if (!lastDate) {
-          decoratedDate = `${p.dataInicio} (inicial)`;
-        } else {
-          const diffMs = current.getTime() - lastDate.getTime();
-          const diffDays = Math.round(diffMs / (1000 * 60 * 60 * 24));
-          if (diffDays > 0) {
-            decoratedDate = `${p.dataInicio} (wait ${diffDays} dia${diffDays > 1 ? "s" : ""})`;
-          } else {
-            decoratedDate = p.dataInicio;
-          }
-        }
-        lastDate = current;
-      } else {
-        decoratedDate = p.dataInicio;
-      }
-    }
+    // Data de início original (somente leitura)
+    const originalRaw = p.dataInicioOriginal || p.dataInicio || "";
+    const originalFormatted = originalRaw ? formatBannerDateTime(originalRaw) : "";
 
-    const hasMeta = decoratedDate || p.ctaType || p.observacao !== undefined;
+    const hasMeta = originalFormatted || p.ctaType || p.observacao !== undefined;
     if (hasMeta) {
       const metaGroup = document.createElement("div");
       metaGroup.className = "info-group";
@@ -229,13 +146,13 @@ export function renderPushList(tabId, pushes) {
       const row = document.createElement("div");
       row.className = "info-row";
 
-      if (decoratedDate) {
+      if (originalFormatted) {
         const lbl = document.createElement("span");
         lbl.className = "info-label";
-        lbl.textContent = "Data de Início:";
+        lbl.textContent = "Data de Início (Original):";
         const val = document.createElement("span");
         val.className = "info-value";
-        val.textContent = decoratedDate;
+        val.textContent = originalFormatted;
         row.appendChild(lbl);
         row.appendChild(val);
       }
@@ -271,7 +188,7 @@ export function renderPushList(tabId, pushes) {
     const grid = document.createElement("div");
     grid.className = "fields-grid";
 
-    function addInputField(labelText, value, full = false) {
+        function addInputField(labelText, value, full = false, fieldKey = null, editable = false) {
       const field = document.createElement("div");
       field.className = "field";
       if (full) field.classList.add("field-full");
@@ -281,16 +198,48 @@ export function renderPushList(tabId, pushes) {
 
       const input = document.createElement("input");
       input.type = "text";
-      input.className = "readonly";
-      input.readOnly = true;
+
+      if (editable) {
+        input.className = "input";
+        input.readOnly = false;
+      } else {
+        input.className = "readonly";
+        input.readOnly = true;
+      }
+
       input.value = value || "";
+
+      if (editable && fieldKey) {
+        input.addEventListener("input", () => {
+          const tabData = tabsState.tabs[tabId];
+          if (!tabData || !tabData.pushes || !tabData.pushes[index]) return;
+
+          tabData.pushes[index][fieldKey] = input.value;
+          p[fieldKey] = input.value;
+          saveState();
+
+          // se mexer na data ou no horário, atualiza o Farol
+          if (fieldKey === "dataInicio" || fieldKey === "horarioSaida") {
+            updateFarolForTab(tabId);
+          }
+        });
+      }
 
       field.appendChild(label);
       field.appendChild(input);
       grid.appendChild(field);
     }
 
+
+    // Nome comunicação (read-only)
     addInputField("Nome Comunicação", p.nomeCom, true);
+
+    // Data de início final (editável, já formatada com " T ")
+    const formattedStart = p.dataInicio ? formatBannerDateTime(p.dataInicio) : "";
+    addInputField("Data de Início (Final)", formattedStart, false, "dataInicio", true);
+
+    // Horário de saída (editável, HH:MM)
+    addInputField("Horário de Saída", p.horarioSaida, false, "horarioSaida", true);
 
     const rowTitulos = document.createElement("div");
     rowTitulos.className = "fields-grid-3";
@@ -344,7 +293,6 @@ export function renderPushList(tabId, pushes) {
   });
 }
 
-
 // ===================== RENDER BANNERS =====================
 
 export function renderBannerList(tabId, banners) {
@@ -394,6 +342,16 @@ export function renderBannerList(tabId, banners) {
     let accTextarea = null;
     let jsonFinalArea = null;
     let img = null;
+    let offerInput = null;
+
+    const tabData = tabsState.tabs[tabId];
+    let stored = null;
+    let offerId = "";
+
+    if (tabData && tabData.banners && tabData.banners[index]) {
+      stored = tabData.banners[index].jsonFinal || null;
+      offerId = tabData.banners[index].offerId || "";
+    }
 
     function addInputField(labelText, value, full = false, fieldKey = null, editable = false) {
       const field = document.createElement("div");
@@ -418,10 +376,10 @@ export function renderBannerList(tabId, banners) {
 
       if (editable && fieldKey) {
         input.addEventListener("input", () => {
-          const tabData = tabsState.tabs[tabId];
-          if (!tabData || !tabData.banners || !tabData.banners[index]) return;
+          const tabDataInner = tabsState.tabs[tabId];
+          if (!tabDataInner || !tabDataInner.banners || !tabDataInner.banners[index]) return;
 
-          tabData.banners[index][fieldKey] = input.value;
+          tabDataInner.banners[index][fieldKey] = input.value;
           b[fieldKey] = input.value;
 
           if (fieldKey === "imagem" && img) {
@@ -429,6 +387,11 @@ export function renderBannerList(tabId, banners) {
           }
 
           saveState();
+
+          // se mexer nas datas finais do banner, atualiza o Farol
+          if (fieldKey === "dataInicio" || fieldKey === "dataFim") {
+            updateFarolForTab(tabId);
+          }
         });
       }
 
@@ -437,31 +400,34 @@ export function renderBannerList(tabId, banners) {
       grid.appendChild(field);
     }
 
+    // Info topo: datas originais + Obs
     const infoTop = document.createElement("div");
     infoTop.className = "info-group";
 
     const rowDates = document.createElement("div");
     rowDates.className = "info-row";
 
-    if (b.dataInicio) {
+    const startOriginal = b.dataInicioOriginal || b.dataInicio;
+    if (startOriginal) {
       const lbl = document.createElement("span");
       lbl.className = "info-label";
-      lbl.textContent = "Data de Início:";
+      lbl.textContent = "Data de Início (Original):";
       const val = document.createElement("span");
       val.className = "info-value";
-      val.textContent = formatBannerDateTime(b.dataInicio);
+      val.textContent = formatBannerDateTime(startOriginal);
       rowDates.appendChild(lbl);
       rowDates.appendChild(val);
     }
 
-    if (b.dataFim) {
+    const endOriginal = b.dataFimOriginal || b.dataFim;
+    if (endOriginal) {
       const lbl = document.createElement("span");
       lbl.className = "info-label";
       lbl.style.marginLeft = "12px";
-      lbl.textContent = "Data de Fim:";
+      lbl.textContent = "Data de Fim (Original):";
       const val = document.createElement("span");
       val.className = "info-value";
-      val.textContent = formatBannerDateTime(b.dataFim);
+      val.textContent = formatBannerDateTime(endOriginal);
       rowDates.appendChild(lbl);
       rowDates.appendChild(val);
     }
@@ -481,6 +447,7 @@ export function renderBannerList(tabId, banners) {
     infoTop.appendChild(rowDates);
     block.appendChild(infoTop);
 
+    // Resumo Título/Subtítulo/CTA
     if (b.titulo || b.subtitulo || b.cta) {
       const infoTit = document.createElement("div");
       infoTit.className = "info-group";
@@ -574,30 +541,34 @@ export function renderBannerList(tabId, banners) {
       block.appendChild(layoutGroup);
     }
 
+    // Campos editáveis principais
     addInputField("Nome Experiência", b.nomeExp, true);
+
+    const formattedIni = b.dataInicio ? formatBannerDateTime(b.dataInicio) : "";
+    const formattedFim = b.dataFim ? formatBannerDateTime(b.dataFim) : "";
+
+    addInputField("Data Início (Final)", formattedIni, false, "dataInicio", true);
+    addInputField("Data Fim (Final)", formattedFim, false, "dataFim", true);
     addInputField("Channel", b.channel, false, "channel", true);
     addInputField("Imagem (URL)", b.imagem, true, "imagem", true);
 
-    // Accessibility Text
+    // Accessibility Text (1 linha, lado a lado com Offer ID)
     const accField = document.createElement("div");
-    accField.className = "field field-full";
+    accField.className = "field";
 
     const accLabel = document.createElement("label");
     accLabel.textContent = "Accessibility Text";
 
-    const accRow = document.createElement("div");
-    accRow.className = "acc-row";
-
-    accTextarea = document.createElement("textarea");
-    accTextarea.className = "readonly-multiline";
-    accTextarea.rows = 3;
+    // agora usamos INPUT normal (mesmo estilo do Offer ID)
+    accTextarea = document.createElement("input");
+    accTextarea.type = "text";
+    accTextarea.className = "input";
     accTextarea.id = `accText_${tabId}_${index}`;
 
     if (b.accText) {
       accTextarea.value = b.accText;
     } else if (tabsState.ocrCache && b.imagem && tabsState.ocrCache[b.imagem]) {
       accTextarea.value = tabsState.ocrCache[b.imagem];
-      const tabData = tabsState.tabs[tabId];
       if (tabData && tabData.banners && tabData.banners[index]) {
         tabData.banners[index].accText = accTextarea.value;
         saveState();
@@ -605,11 +576,11 @@ export function renderBannerList(tabId, banners) {
     }
 
     accTextarea.addEventListener("input", () => {
-      const tabData = tabsState.tabs[tabId];
+      const currentTabData = tabsState.tabs[tabId];
       const value = accTextarea.value;
 
-      if (tabData && tabData.banners && tabData.banners[index]) {
-        tabData.banners[index].accText = value;
+      if (currentTabData && currentTabData.banners && currentTabData.banners[index]) {
+        currentTabData.banners[index].accText = value;
       }
 
       if (jsonFinalArea) {
@@ -619,42 +590,38 @@ export function renderBannerList(tabId, banners) {
           const updated = JSON.stringify(obj, null, 2);
           jsonFinalArea.value = updated;
 
-          if (tabData && tabData.banners && tabData.banners[index]) {
-            tabData.banners[index].jsonFinal = updated;
+          if (currentTabData && currentTabData.banners && currentTabData.banners[index]) {
+            currentTabData.banners[index].jsonFinal = updated;
             saveState();
           }
         } catch {
           // json inválido, ignora
         }
-      } else {
+      } else if (currentTabData) {
         saveState();
       }
     });
 
-    const accBtn = document.createElement("button");
-    accBtn.type = "button";
-    accBtn.textContent = "Gerar Accessibility Text";
-    accBtn.className = "btn-secondary";
-
-    accBtn.addEventListener("click", () => {
-      const tabData = tabsState.tabs[tabId];
-      const bannersArr = (tabData && tabData.banners) || [];
-      const currentBanner = bannersArr[index] || b;
-
-      const imgUrl = currentBanner.imagem || b.imagem;
-
-      if (!imgUrl) {
-        accTextarea.value = "Nenhuma URL de imagem.";
-        return;
-      }
-      fetchAccessibilityText(imgUrl, accTextarea, tabId);
-    });
-
-    accRow.appendChild(accTextarea);
-    accRow.appendChild(accBtn);
     accField.appendChild(accLabel);
-    accField.appendChild(accRow);
+    accField.appendChild(accTextarea);
     grid.appendChild(accField);
+
+
+    // Número do Offer ID
+    const offerField = document.createElement("div");
+    offerField.className = "field";
+
+    const offerLabel = document.createElement("label");
+    offerLabel.textContent = "Número do Offer ID";
+
+    offerInput = document.createElement("input");
+    offerInput.type = "text";
+    offerInput.className = "input";
+    offerInput.value = offerId || "";
+
+    offerField.appendChild(offerLabel);
+    offerField.appendChild(offerInput);
+    grid.appendChild(offerField);
 
     block.appendChild(grid);
 
@@ -689,6 +656,7 @@ export function renderBannerList(tabId, banners) {
 
     // JSONs
     if (b.json) {
+      // JSON original (read-only)
       const jsonField = document.createElement("div");
       jsonField.className = "field field-full";
 
@@ -696,7 +664,7 @@ export function renderBannerList(tabId, banners) {
       details.className = "json-original-toggle";
 
       const summary = document.createElement("summary");
-      summary.textContent = "JSON gerado (original)";
+      summary.textContent = "JSON (Original)";
 
       const pre = document.createElement("pre");
       pre.className = "code-block";
@@ -706,11 +674,15 @@ export function renderBannerList(tabId, banners) {
       details.appendChild(pre);
       jsonField.appendChild(details);
 
+      // JSON Final (toggle + editable)
       const jsonFinalField = document.createElement("div");
       jsonFinalField.className = "field field-full";
 
-      const jsonFinalLabel = document.createElement("label");
-      jsonFinalLabel.textContent = "JSON Final";
+      const jsonFinalDetails = document.createElement("details");
+      jsonFinalDetails.className = "json-original-toggle";
+
+      const jsonFinalSummary = document.createElement("summary");
+      jsonFinalSummary.textContent = "JSON Fullimage (Final)";
 
       jsonFinalArea = document.createElement("textarea");
       jsonFinalArea.className = "json-final";
@@ -751,15 +723,6 @@ export function renderBannerList(tabId, banners) {
         defaultFinalJson = b.json;
       }
 
-      const tabData = tabsState.tabs[tabId];
-      let stored = null;
-      let offerId = "";
-
-      if (tabData && tabData.banners && tabData.banners[index]) {
-        stored = tabData.banners[index].jsonFinal || null;
-        offerId = tabData.banners[index].offerId || "";
-      }
-
       if (!stored && offerId && defaultFinalObj) {
         defaultFinalObj.campaignTitle = offerId;
         defaultFinalJson = JSON.stringify(defaultFinalObj, null, 2);
@@ -785,58 +748,41 @@ export function renderBannerList(tabId, banners) {
         }
       });
 
-      jsonFinalField.appendChild(jsonFinalLabel);
-      jsonFinalField.appendChild(jsonFinalArea);
+      jsonFinalDetails.appendChild(jsonFinalSummary);
+      jsonFinalDetails.appendChild(jsonFinalArea);
+      jsonFinalField.appendChild(jsonFinalDetails);
 
-      // Offer ID
-      const offerField = document.createElement("div");
-      offerField.className = "field field-full";
-
-      const offerLabel = document.createElement("label");
-      offerLabel.textContent = "Número do Offer ID";
-
-      const offerRow = document.createElement("div");
-      offerRow.className = "acc-row";
-
-      const offerInput = document.createElement("input");
-      offerInput.type = "text";
-      offerInput.className = "input";
-      offerInput.value = offerId || "";
-
-      offerInput.addEventListener("input", () => {
-        const value = offerInput.value.trim();
-        const tData = tabsState.tabs[tabId];
-        if (tData && tData.banners && tData.banners[index]) {
-          tData.banners[index].offerId = value;
-        }
-
-        try {
-          const obj = JSON.parse(jsonFinalArea.value || "{}");
-
-          if (value) {
-            obj.campaignTitle = value;
-          } else {
-            obj.campaignTitle = "numero_do_offerID";
-          }
-
-          const updated = JSON.stringify(obj, null, 2);
-          jsonFinalArea.value = updated;
-
+      if (offerInput) {
+        offerInput.addEventListener("input", () => {
+          const value = offerInput.value.trim();
+          const tData = tabsState.tabs[tabId];
           if (tData && tData.banners && tData.banners[index]) {
-            tData.banners[index].jsonFinal = updated;
-            saveState();
+            tData.banners[index].offerId = value;
           }
-        } catch {
-          // json inválido, ignora
-        }
-      });
 
-      offerRow.appendChild(offerInput);
-      offerField.appendChild(offerLabel);
-      offerField.appendChild(offerRow);
+          try {
+            const obj = JSON.parse(jsonFinalArea.value || "{}");
+
+            if (value) {
+              obj.campaignTitle = value;
+            } else {
+              obj.campaignTitle = "numero_do_offerID";
+            }
+
+            const updated = JSON.stringify(obj, null, 2);
+            jsonFinalArea.value = updated;
+
+            if (tData && tData.banners && tData.banners[index]) {
+              tData.banners[index].jsonFinal = updated;
+              saveState();
+            }
+          } catch {
+            // json inválido, ignora
+          }
+        });
+      }
 
       block.appendChild(jsonField);
-      block.appendChild(offerField);
       block.appendChild(jsonFinalField);
     }
 
@@ -846,7 +792,6 @@ export function renderBannerList(tabId, banners) {
     container.appendChild(item);
   });
 }
-
 
 // ===================== RENDER MKT SCREEN =====================
 
@@ -1075,7 +1020,6 @@ export function renderMktScreenView(tabId, mkt) {
   }
 }
 
-
 /* ====================================================================== */
 /* ====================== PROCESSOS / FAROL / CONCLUSÃO ================= */
 /* ====================================================================== */
@@ -1139,7 +1083,7 @@ function renderPushProcess(tabId, tabData) {
     return;
   }
 
-  const nomeCard = tabData.nome || "Sem nome";
+  const nomeCard = tabData.fullTitle || tabData.nome || "Sem nome";
   const cardUrl = tabData.cardUrl || "";
 
   const solicitanteEmail =
@@ -1280,7 +1224,7 @@ function renderBannerProcessProcess(tabId, tabData) {
     return;
   }
 
-  const nomeCard = tabData.nome || "Sem nome";
+  const nomeCard = tabData.fullTitle || tabData.nome || "Sem nome";
   const cardUrl = tabData.cardUrl || "";
 
   const testsApproved = getFlag(tabData, "bannerTestsApproved");
@@ -1406,7 +1350,7 @@ function renderMktProcess(tabId, tabData) {
     return;
   }
 
-  const nomeCard = tabData.nome || "Sem nome";
+  const nomeCard = tabData.fullTitle || tabData.nome || "Sem nome";
   const cardUrl = tabData.cardUrl || "";
 
   const testsApproved = getFlag(tabData, "mktTestsApproved");
@@ -1521,8 +1465,50 @@ function renderMktProcess(tabId, tabData) {
   container.appendChild(accItem);
 }
 
+/* ---- helpers de Farol ---- */
 
-/* ---- FAROL / CONCLUSÃO ---- */
+function buildPushDateTimeString(p) {
+  const raw = (p.dataInicio || "").trim();
+  const horarioSaida = (p.horarioSaida || "").trim();
+
+  let datePart = "";
+  let timePart = "";
+
+  if (raw) {
+    const parts = raw.split("T");
+    if (parts.length === 2) {
+      datePart = parts[0].trim();
+      const timeRaw = (parts[1] || "").trim();
+      if (timeRaw) {
+        const [hhStrRaw, mmStrRaw] = timeRaw.split(":");
+        const hhStr = (hhStrRaw || "").padStart(2, "0");
+        const mmStr = (mmStrRaw || "00").substring(0, 2).padStart(2, "0");
+        timePart = `${hhStr}:${mmStr}`;
+      }
+    } else {
+      datePart = raw;
+    }
+  }
+
+  if (horarioSaida) {
+    timePart = horarioSaida;
+  }
+
+  if (datePart && timePart) return `${datePart} T ${timePart}`;
+  if (datePart) return datePart;
+  if (timePart) return `T ${timePart}`;
+  return "";
+}
+
+function buildBannerRangeString(b) {
+  const ini = b.dataInicio ? formatBannerDateTime(b.dataInicio) : "";
+  const fim = b.dataFim ? formatBannerDateTime(b.dataFim) : "";
+
+  if (ini && fim) return `${ini} - ${fim}`;
+  if (ini) return ini;
+  if (fim) return fim;
+  return "";
+}
 
 function buildFarolText(tabData) {
   const base = tabData.base || "N/A";
@@ -1536,14 +1522,28 @@ function buildFarolText(tabData) {
   txt += `Journey:\n${journey}\n\n`;
 
   if (pushes.length) {
-    const lines = pushes.map(p => p.nomeCom || "").filter(Boolean);
+    const lines = pushes
+      .map(p => {
+        const name = p.nomeCom || "";
+        if (!name) return null;
+        const when = buildPushDateTimeString(p);
+        return when ? `${name} (${when})` : name;
+      })
+      .filter(Boolean);
     if (lines.length) {
       txt += `Pushs:\n${lines.join("\n")}\n\n`;
     }
   }
 
   if (banners.length) {
-    const lines = banners.map(b => b.nomeExp || b.nomeCampanha || "").filter(Boolean);
+    const lines = banners
+      .map(b => {
+        const name = b.nomeExp || b.nomeCampanha || "";
+        if (!name) return null;
+        const range = buildBannerRangeString(b);
+        return range ? `${name} (${range})` : name;
+      })
+      .filter(Boolean);
     if (lines.length) {
       txt += `Banners:\n${lines.join("\n")}\n\n`;
     }
@@ -1559,14 +1559,23 @@ function buildFarolText(tabData) {
   return txt.trim();
 }
 
-function buildQaMessageText(tabData) {
-  const nome = tabData.nome || "";
-  const url = tabData.cardUrl || "";
-  if (url) {
-    return `Pronto para QA!\n${nome}\n${url}`;
+function updateFarolForTab(tabId) {
+  const tabData = tabsState.tabs[tabId];
+  if (!tabData) return;
+
+  // gera o texto novo com base no estado atual (base, pushes, banners, etc.)
+  const newText = buildFarolText(tabData);
+  tabData.farolText = newText;
+  tabsState.tabs[tabId] = tabData;
+  saveState();
+
+  // se o textarea do Farol já existe na tela, atualiza ele também
+  const area = document.getElementById("farolText_" + tabId);
+  if (area) {
+    area.value = newText;
   }
-  return `Pronto para QA!\n${nome}`;
 }
+
 
 function renderFarolConclusao(tabId, tabData) {
   const hasPush = (tabData.pushes || []).length > 0;
@@ -1580,86 +1589,87 @@ function renderFarolConclusao(tabId, tabData) {
   if (hasBanner) farolUnlocked = farolUnlocked && getFlag(tabData, "bannerReadyQA");
   if (hasMkt)    farolUnlocked = farolUnlocked && getFlag(tabData, "mktReadyQA");
 
-  const nomeCard = tabData.nome || "Sem nome";
+  const nomeCard = tabData.fullTitle || tabData.nome || "Sem nome";
   const cardUrl = tabData.cardUrl || "";
 
   const farolAcc = document.getElementById("farolAccordion_" + tabId);
   const farolContainer = document.getElementById("farol_container_" + tabId);
-  if (farolAcc && farolContainer) {
-    if (!farolUnlocked) {
-      farolAcc.style.display = "none";
-      farolContainer.innerHTML = "";
-    } else {
-      farolAcc.style.display = "";
-      const section = document.createElement("div");
-      section.className = "subsection";
+  if (!farolAcc || !farolContainer) return;
 
-      const farolText = buildFarolText(tabData);
-
-      const farolField = document.createElement("div");
-      farolField.className = "field field-full";
-
-      const farolLabel = document.createElement("label");
-      farolLabel.textContent = "Mensagem do Farol";
-      farolField.appendChild(farolLabel);
-
-      const farolArea = document.createElement("textarea");
-      farolArea.className = "readonly-multiline";
-      farolArea.rows = 8;
-      farolArea.readOnly = true;
-      farolArea.value = farolText;
-      farolField.appendChild(farolArea);
-
-      section.appendChild(farolField);
-
-      const qaField = document.createElement("div");
-      qaField.className = "field field-full";
-
-      const qaLabel = document.createElement("label");
-      qaLabel.textContent = "Mensagem para QA";
-      qaField.appendChild(qaLabel);
-
-      const infoGroup = document.createElement("div");
-      infoGroup.className = "info-group";
-
-      const rowMsg = document.createElement("div");
-      rowMsg.className = "info-row";
-      const lblMsg = document.createElement("span");
-      lblMsg.className = "info-label";
-      lblMsg.textContent = "Texto:";
-      const valMsg = document.createElement("span");
-      valMsg.className = "info-value";
-      valMsg.textContent = "Pronto para QA!";
-      rowMsg.appendChild(lblMsg);
-      rowMsg.appendChild(valMsg);
-
-      const rowCard = document.createElement("div");
-      rowCard.className = "info-row";
-      const lblCard = document.createElement("span");
-      lblCard.className = "info-label";
-      lblCard.textContent = "Card:";
-      const valCard = document.createElement("span");
-      valCard.className = "info-value";
-      if (cardUrl) {
-        valCard.innerHTML = `<a href="${cardUrl}" target="_blank" class="link-card">${nomeCard}</a>`;
-      } else {
-        valCard.textContent = nomeCard;
-      }
-      rowCard.appendChild(lblCard);
-      rowCard.appendChild(valCard);
-
-      infoGroup.appendChild(rowMsg);
-      infoGroup.appendChild(rowCard);
-      qaField.appendChild(infoGroup);
-
-      section.appendChild(qaField);
-
-      farolContainer.innerHTML = "";
-      farolContainer.appendChild(section);
-    }
+  if (!farolUnlocked) {
+    farolAcc.style.display = "none";
+    farolContainer.innerHTML = "";
+    return;
   }
-}
 
+  farolAcc.style.display = "";
+
+  const section = document.createElement("div");
+  section.className = "subsection";
+
+  // Mensagem do Farol (editável, maior, salva em tabData.farolText)
+  const farolField = document.createElement("div");
+  farolField.className = "field field-full";
+
+  const farolLabel = document.createElement("label");
+  farolLabel.textContent = "Mensagem do Farol";
+  farolField.appendChild(farolLabel);
+
+  const farolArea = document.createElement("textarea");
+  farolArea.className = "readonly-multiline farol-textarea";
+  farolArea.rows = 10;
+  farolArea.readOnly = false;
+  farolArea.id = "farolText_" + tabId; // <-- id para permitir atualização direta
+
+  const initialFarolText =
+    tabData.farolText && tabData.farolText.trim() !== ""
+      ? tabData.farolText
+      : buildFarolText(tabData);
+
+  farolArea.value = initialFarolText;
+
+  farolArea.addEventListener("input", () => {
+    const tData = tabsState.tabs[tabId];
+    if (!tData) return;
+    tData.farolText = farolArea.value;
+    saveState();
+  });
+
+  farolField.appendChild(farolArea);
+  section.appendChild(farolField);
+
+  // Apenas o link do card (sem mensagem de QA)
+  const linkField = document.createElement("div");
+  linkField.className = "field field-full";
+
+  const infoGroup = document.createElement("div");
+  infoGroup.className = "info-group";
+
+  const rowCard = document.createElement("div");
+  rowCard.className = "info-row";
+
+  const lblCard = document.createElement("span");
+  lblCard.className = "info-label";
+  lblCard.textContent = "Card:";
+
+  const valCard = document.createElement("span");
+  valCard.className = "info-value";
+
+  if (cardUrl) {
+    valCard.innerHTML = `<a href="${cardUrl}" target="_blank" class="link-card">${nomeCard}</a>`;
+  } else {
+    valCard.textContent = nomeCard;
+  }
+
+  rowCard.appendChild(lblCard);
+  rowCard.appendChild(valCard);
+  infoGroup.appendChild(rowCard);
+  linkField.appendChild(infoGroup);
+  section.appendChild(linkField);
+
+  farolContainer.innerHTML = "";
+  farolContainer.appendChild(section);
+}
 
 // ----------------- RE-RENDER DOS PROCESSOS PRESERVANDO ABERTOS ---------
 
@@ -1723,7 +1733,6 @@ function attachProcessHandlers(tabId, tabData) {
     el.style.display = on ? "block" : "none";
   });
 }
-
 
 /* ---- Função principal de processos (chamada pelo main.js) ---- */
 

@@ -4,8 +4,7 @@
 export let tabsState = {
   tabs: {},
   activeTab: null,
-  ocrCache: {},
-  remindersText: ""
+  ocrCache: {}
 };
 
 let tabCount = 0;
@@ -31,12 +30,6 @@ export function loadState() {
 
   if (!tabsState.tabs) tabsState.tabs = {};
   if (!tabsState.ocrCache) tabsState.ocrCache = {};
-  if (typeof tabsState.remindersText !== "string") {
-    tabsState.remindersText = "";
-  }
-  if (typeof tabsState.remindersText !== "string") {
-    tabsState.remindersText = "";
-  }
 
   const ids = Object.keys(tabsState.tabs)
     .map(id => parseInt(id.replace("tab_", ""), 10))

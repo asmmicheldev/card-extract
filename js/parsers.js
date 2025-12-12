@@ -30,7 +30,12 @@ export function parseTitulo(linhas) {
     }
   }
 
-  return { nome, descricao: desc, cardUrl };
+  return {
+    nome,
+    descricao: desc,
+    cardUrl,
+    tituloCompleto: tituloLinha || ""
+  };
 }
 
 // ---- Divisão 2: Informações Gerais ----
