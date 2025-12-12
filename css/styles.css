@@ -322,11 +322,15 @@ body {
 /* === ABAS === */
 .tabs-container {
     display: flex;
-    align-items: center;
+    align-items: stretch;  /* todas as abas ficam com a mesma altura */
     background: var(--bg-surface);
     padding: 6px 12px;
     gap: 6px;
     border-bottom: 1px solid var(--border-subtle);
+
+    flex-wrap: nowrap;   /* uma linha só */
+    overflow-x: auto;    /* scroll horizontal quando lotar */
+    overflow-y: hidden;  /* não cria scroll verticalzinho */
 }
 
 /* Aba padrão */
@@ -335,13 +339,16 @@ body {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 12px;
+    padding: 6px 10px;
     background: var(--tab-bg);
     color: var(--tab-text);
     border-radius: 6px 6px 0 0;
     border: 1px solid var(--tab-border);
     cursor: pointer;
     transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
+
+    flex: 0 0 260px;   /* cada aba ~260px de largura */
+    white-space: normal;  /* permite quebra de linha */
 }
 
 .tab:hover {
@@ -357,9 +364,17 @@ body {
 
 /* Aba título (clicável) */
 .tab-title {
-    flex: 1;
+    flex: 1 1 auto;
     cursor: pointer;
+
+    white-space: normal;
+    line-height: 1.2;
+    min-width: 0;
+
+    max-height: none;
+    overflow: visible;
 }
+
 
 /* Botão de fechar aba */
 .close-tab {
@@ -382,6 +397,8 @@ body {
     color: var(--tab-text);
     border: 1px dashed var(--tab-border);
     padding: 6px 14px;
+    flex: 0 0 auto;          /* não encolhe excessivamente */
+    white-space: nowrap;
 }
 
 /* Canais */

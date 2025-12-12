@@ -31,6 +31,29 @@ function setTextValue(id, value) {
   }
 }
 
+// monta o texto da aba a partir do parseTitulo
+function buildTabTitleFromTitulo(titulo) {
+  if (!titulo) return "Card";
+
+  // 1) PRIORIDADE: só a descrição da campanha
+  if (titulo.descricao && titulo.descricao.trim() !== "") {
+    return titulo.descricao.trim();
+  }
+
+  // 2) Se por algum motivo não tiver descrição, cai pro que tinha antes
+  if (titulo.tituloCompleto && titulo.tituloCompleto.trim() !== "") {
+    return titulo.tituloCompleto.trim();
+  }
+
+  if (titulo.nome && titulo.descricao) {
+    return `${titulo.nome} - ${titulo.descricao}`;
+  }
+
+  if (titulo.nome) return titulo.nome;
+
+  return "Card";
+}
+
 function ensureProcessStructures(data) {
   if (!data.processFlags) data.processFlags = {};
   if (!data.processChecks) data.processChecks = {};
@@ -51,7 +74,8 @@ function createTabFromState(tabId, data) {
 
   const title = document.createElement("span");
   title.className = "tab-title";
-  title.textContent = data.title || "Card";
+  // quando recarregar do localStorage, prefere sempre o fullTitle
+  title.textContent = data.fullTitle || data.title || "Card";
 
   const close = document.createElement("span");
   close.className = "close-tab";
@@ -365,9 +389,11 @@ function processCard(tabId, texto) {
   setFieldValue("nome_", tabId, titulo.nome);
   setFieldValue("base_", tabId, dados.base);
 
+  const tabTitleText = buildTabTitleFromTitulo(titulo);
+
   const tabTitle = document.querySelector(`#${tabId} .tab-title`);
   if (tabTitle) {
-    tabTitle.textContent = titulo.nome || "Card";
+    tabTitle.textContent = tabTitleText;
   }
 
   setTextValue("desc_" + tabId, titulo.descricao);
@@ -377,10 +403,10 @@ function processCard(tabId, texto) {
 
   renderCanais(tabId, info.canais);
 
-  tabData.title       = titulo.nome || "Card";
+  tabData.title       = tabTitleText; // título da aba = linha completa
   tabData.input       = texto;
   tabData.nome        = titulo.nome;
-  tabData.fullTitle   = titulo.tituloCompleto || titulo.nome || "Card";
+  tabData.fullTitle   = tabTitleText; // mantém fullTitle consistente
   tabData.descricao   = titulo.descricao;
   tabData.cardUrl     = titulo.cardUrl || "";
 
@@ -489,9 +515,16 @@ function importCardState(tabId) {
   setFieldValue("base_", tabId, obj.base || "");
 
   const tabTitle = document.querySelector(`#${tabId} .tab-title`);
+  const importedTitle =
+    obj.fullTitle || obj.title || obj.nome || "Card";
+
   if (tabTitle) {
-    tabTitle.textContent = obj.title || obj.nome || "Card";
+    tabTitle.textContent = importedTitle;
   }
+
+  // garante que o estado fique padronizado
+  obj.fullTitle = importedTitle;
+  obj.title = importedTitle;
 
   setTextValue("desc_" + tabId, obj.descricao || "");
   setTextValue("solicitanteText_" + tabId, obj.solicitante || "");
