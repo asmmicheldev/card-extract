@@ -29,11 +29,10 @@ export function parseTitulo(linhas) {
       nome = partes[1].trim();
       desc = partes.slice(2).join(" - ").trim();
     } else if (partes.length === 2) {
-      // RICO - CODIGO   |   CLEAR - CODIGO  (sem descrição)
+      // RICO - CODIGO   |   CLEAR - CODIGO
       nome = partes[1].trim();
-      desc = partes[1].trim(); // aba e "Nome do Card" não ficam vazios
+      desc = partes[1].trim();
     } else {
-      // fallback extremo: tudo vai pra nome
       nome = tituloLinha.trim();
       desc = "";
     }

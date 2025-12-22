@@ -16,7 +16,357 @@ function getHashForSolicitante(email) {
   return DEMANDANTE_HASHS[key] || "";
 }
 
-// -------- helpers visuais ---------
+/* ====================================================================== */
+/* ============================ QA CHECKLIST ============================ */
+/* ====================================================================== */
+
+const QA_CHECKLIST = [
+  {
+    key: "ajoCampaign",
+    title: "AJO Campaign",
+    items: [
+      { id: "ajo_01", text: "Campanha criada no campaign?" },
+      { id: "ajo_02", text: "Nome da campanha de acordo com o card? (Nome do card)" },
+      { id: "ajo_03", text: "Nome da ação de acordo com o card? (Nome do touch)" },
+      { id: "ajo_04", text: "Tagueamento das peças está dentro do modelo padrão (verificar se a central faz sentido)?" },
+      { id: "ajo_05", text: "Print do card está de acordo com a configuração da comunicação?" },
+      { id: "ajo_06", text: "Verificar se o email possui header e footer da mesma marca" },
+      { id: "ajo_07", text: "Avaliar se o assunto/pré header e sender estão de acordo com o card e configurados" },
+      {
+        id: "ajo_08",
+        text: "Peças estão reiderizando corretamente as variáveis? (Print da pessoa que desenvolveu)",
+        defaultObs: "Anexar print.",
+        obsLocked: true
+      },
+      { id: "ajo_09", text: "Verificar links nas comunicações (Ex: Onelink pra deeplink em e-mail etc)" },
+      { id: "ajo_10", text: "Configurações da atividade de push estão corretas, link configurado na peça (IOS + Android) e marca selecionada (push configuration)?" },
+      { id: "ajo_11", text: "Avaliar se a audiencia possui opt out para o canal que será disparado (Ofertas, relacionamento, novidades)" },
+      { id: "ajo_12", text: "Print da evidencia está em anexo?" },
+      { id: "ajo_13", text: "Card possui ok de testes?" }
+    ]
+  },
+  {
+    key: "offers",
+    title: "Offers (Banners/Inapps)",
+    items: [
+      { id: "off_01", text: "Nome da campanha de acordo com o card? (Nome do touch)" },
+      { id: "off_02", text: "Data configurada conforme solicitado no card?" },
+      { id: "off_03", text: "Marca selecionada de acordo com o card?" },
+      { id: "off_04", text: "Posicionamento configurado de acordo com o card?" },
+      { id: "off_05", text: "Avaliar no Json se a imagem está reiderizando corretamente e se copy/deeplink estão condizentes com o card" },
+      { id: "off_06", text: "Avaliar se a audiencia está inclusa corretamente (Audiencia Full - sem opt out de canais)" },
+      { id: "off_07", text: "Prioridade configurada de acordo com o de/para do planner? (Figura 1)" },
+      { id: "off_08", text: "Segmento com regra de 20 viasualizações e 3 cliques?" }
+    ]
+  },
+  {
+    key: "mkt",
+    title: "Marketing Screen",
+    items: [
+      { id: "mkt_01", text: "Nome da campanha de acordo com o card? (Nome da ação)" },
+      { id: "mkt_02", text: "Avaliar se o publico-alvo está configurado e setado na experiencia" },
+      { id: "mkt_03", text: "Avaliar se a localização da MS está de acordo com o solicitado no card" },
+      { id: "mkt_04", text: "Avaliar se o nome da experiencia está incluso no json (nome de acordo com o card)" },
+      { id: "mkt_05", text: "Avaliar no Json se a imagem está reiderizando corretamente e se copy/deeplink estão condizentes com o card" },
+      { id: "mkt_06", text: "Avaliar se a prioridade está como '1'" },
+      { id: "mkt_07", text: "Avaliar se a 'Meta' está configurada com 'envolvimento' e 'visualizações de pagina'." },
+      { id: "mkt_08", text: "Avaliar se a MS está ativa" }
+    ]
+  },
+  {
+    key: "aud",
+    title: "Audiences Adobe (AEP)",
+    items: [
+      { id: "aud_01", text: "Validar se existe a exclusao de MA General Exclusion" },
+      { id: "aud_02", text: "Em casos de nao ter general exclusion, validar se incluímos GC" },
+      { id: "aud_03", text: "Validar Sinacor ativo (True)" },
+      { id: "aud_04", text: "Validar Trading Account Hash (Exists)" },
+      { id: "aud_05", text: "Validar Optout B2B (Apenas XP - Excluir) - Campanhas" },
+      { id: "aud_06", text: "Avaliar a marca" },
+      { id: "aud_07", text: "Audience publicada?" },
+      { id: "aud_08", text: "Audience está na pasta correta?" },
+      { id: "aud_09", text: "Tags foram adicionadas?" },
+      { id: "aud_10", text: "Audience no padrão de nomenclatura?" },
+      { id: "aud_11", text: "Verificar se a lógica construida faz sentido com o briefing de negócios" },
+      { id: "aud_12", text: "Avaliar se a audiencia foi configurada da forma correta (Batch ou Streaming)" },
+      { id: "aud_13", text: "Validar volumetria e Valuation da Audience" },
+      { id: "aud_14", text: "Validar se existe opt-out do canal e se condiz com a central de envio (Casos de Campagn)" }
+    ]
+  },
+  {
+    key: "journey",
+    title: "Journey (AJO)",
+    items: [
+      { id: "jrn_01", text: "Verificar evidências de testes de disparo(s)" },
+      { id: "jrn_02", text: "Verificar aprovação do time de negócios" },
+      { id: "jrn_03", text: "Garantir que as audiencias, critérios de entrada e regras estão condizentes com as regras de negócio" },
+      { id: "jrn_04", text: "Avaliar se a audiencia selecionada condiz com o disparo (Read ou qualification)" },
+      { id: "jrn_05", text: "Read Audience: Verificar o Schedule da Jornada" },
+      { id: "jrn_06", text: "Avaliar as regras de reingresso ou tempo de descanso" },
+      { id: "jrn_07", text: "Unitary Event: Existe a atividade de Espera de pelo menos 10 minutos logo após a atividade de entrada?" },
+      { id: "jrn_08", text: "Unitary Event: Existe um condition logo após o evento de wait que faz a validação na Audience e filtra apenas os clientes que estão na audience" },
+      { id: "jrn_09", text: "Unitary Event: Verificar se a condição para trigger via evento está correta de acordo com o objetivo da jornada/campanha e briefing" },
+      { id: "jrn_10", text: "Garantir que as configurações da jornada estão de acordo com o briefing: touchpoints, conditions, data e horário do disparo e etc." },
+      { id: "jrn_11", text: "Checar a seleção de sender/surface para canais" },
+      { id: "jrn_12", text: "Validar se a jornada possui conditions (ProfileFielGroup)" },
+      { id: "jrn_13", text: "Validar se a jornada possui conditions de opt-out (ProfileFielGroup)" },
+      { id: "jrn_14", text: "[E-MAIL] Conferir templates, conteúdos e personalização de variáveis nas actions" },
+      { id: "jrn_15", text: "[PUSH] Conferir templates, conteúdos e personalização de variáveis nas actions" },
+      { id: "jrn_16", text: "Verificar se taxonomia (jornada/campanha e steps/actions) segue o padrão definido" },
+      { id: "jrn_17", text: "[WhatsApp] Conferir templates, conteúdos e personalização de variáveis nas actions" },
+      { id: "jrn_18", text: "[WhatsApp] Avaliar tamanho da base para nao enviarmos mais de 1.000 disparos por minuto", defaultObs: "Confirmar quantidade com time do Avila" }
+    ]
+  }
+];
+
+function ensureQA(tabData) {
+  if (!tabData.qa) tabData.qa = { items: {} };
+  if (!tabData.qa.items) tabData.qa.items = {};
+}
+
+function getQAEntry(tabData, id) {
+  ensureQA(tabData);
+  return tabData.qa.items[id] || { status: null, obs: "" };
+}
+
+function setQAEntry(tabId, id, patch) {
+  const tabData = tabsState.tabs[tabId];
+  if (!tabData) return;
+  ensureQA(tabData);
+
+  const prev = tabData.qa.items[id] || { status: null, obs: "" };
+  tabData.qa.items[id] = { ...prev, ...patch };
+
+  tabsState.tabs[tabId] = tabData;
+  saveState();
+}
+
+function applyTriStateToggleVisual(group, status) {
+  const noBtn = group.querySelector(".toggle-chip.no");
+  const yesBtn = group.querySelector(".toggle-chip.yes");
+  if (!noBtn || !yesBtn) return;
+
+  noBtn.classList.remove("active");
+  yesBtn.classList.remove("active");
+
+  if (status === true) yesBtn.classList.add("active");
+  if (status === false) noBtn.classList.add("active");
+}
+
+function computeStats(tabData, items) {
+  let yes = 0, no = 0, pend = 0;
+  items.forEach(it => {
+    const st = getQAEntry(tabData, it.id).status;
+    if (st === true) yes++;
+    else if (st === false) no++;
+    else pend++;
+  });
+  return { yes, no, pend, total: items.length };
+}
+
+function buildQAText(tabData) {
+  ensureQA(tabData);
+
+  let yesAll = 0, noAll = 0, pendAll = 0;
+
+  QA_CHECKLIST.forEach(sec => {
+    const st = computeStats(tabData, sec.items);
+    yesAll += st.yes; noAll += st.no; pendAll += st.pend;
+  });
+
+  const lines = [];
+  lines.push("~QA - Checks");
+  lines.push(`Resumo: Sim ${yesAll} | Não ${noAll} | Pendente ${pendAll}`);
+  lines.push("");
+
+  QA_CHECKLIST.forEach(sec => {
+    const secLines = [];
+
+    sec.items.forEach(it => {
+      const entry = getQAEntry(tabData, it.id);
+      if (entry.status !== true) return;
+
+      const obsText = (entry.obs && entry.obs.trim())
+        ? entry.obs.trim()
+        : (it.defaultObs ? it.defaultObs.trim() : "");
+
+      let row = `- ${it.text} — Sim`;
+      if (obsText) row += ` | Obs: ${obsText}`;
+      secLines.push(row);
+    });
+
+    if (secLines.length) {
+      if (lines[lines.length - 1] !== "") lines.push("");
+      lines.push(sec.title);
+      lines.push(...secLines);
+    }
+  });
+
+  return lines.join("\n").trim();
+}
+
+function updateQAOutput(tabId, tabData) {
+  const out = document.getElementById("qaOutput_" + tabId);
+  if (!out) return;
+  out.value = buildQAText(tabData);
+}
+
+export function renderQAChecks(tabId, tabData, openIds = []) {
+  const container = document.getElementById("qa_container_" + tabId);
+  if (!container) return;
+
+  ensureQA(tabData);
+  container.innerHTML = "";
+
+  const getOpenIdsNow = () =>
+    Array.from(container.querySelectorAll(".accordion-body.open")).map(b => b.id);
+
+  QA_CHECKLIST.forEach(sec => {
+    const stats = computeStats(tabData, sec.items);
+
+    const item = document.createElement("div");
+    item.className = "accordion-item accordion-tier3";
+
+    const header = document.createElement("div");
+    header.className = "accordion-header accordion-header-small";
+    header.dataset.accordionTarget = `qa_${tabId}_${sec.key}`;
+
+    const title = document.createElement("span");
+    title.className = "accordion-title";
+    title.textContent = sec.title;
+
+    const meta = document.createElement("span");
+    meta.className = "accordion-meta";
+    meta.textContent = `Sim ${stats.yes}/${stats.total}`;
+
+    const arrow = document.createElement("span");
+    arrow.className = "accordion-arrow";
+    arrow.textContent = "▸";
+
+    header.appendChild(title);
+    header.appendChild(meta);
+    header.appendChild(arrow);
+
+    const body = document.createElement("div");
+    body.className = "accordion-body";
+    body.id = `qa_${tabId}_${sec.key}`;
+
+    if (openIds.includes(body.id)) {
+      body.classList.add("open");
+      header.classList.add("open");
+    }
+
+    const block = document.createElement("div");
+    block.className = "subsection";
+
+    sec.items.forEach(it => {
+      const row = document.createElement("div");
+      row.className = "qa-item-row";
+
+      const txt = document.createElement("div");
+      txt.className = "qa-item-text";
+      txt.textContent = it.text;
+
+      const group = document.createElement("div");
+      group.className = "toggle-group";
+      group.dataset.qaId = it.id;
+
+      const noBtn = document.createElement("button");
+      noBtn.type = "button";
+      noBtn.className = "toggle-chip no";
+      noBtn.textContent = "Não";
+
+      const yesBtn = document.createElement("button");
+      yesBtn.type = "button";
+      yesBtn.className = "toggle-chip yes";
+      yesBtn.textContent = "Sim";
+
+      group.appendChild(noBtn);
+      group.appendChild(yesBtn);
+
+      const obs = document.createElement("input");
+      obs.type = "text";
+      obs.className = it.obsLocked ? "readonly qa-obs-input" : "input qa-obs-input";
+      obs.readOnly = !!it.obsLocked;
+
+      const entry = getQAEntry(tabData, it.id);
+
+      if ((!entry.obs || !entry.obs.trim()) && it.defaultObs) {
+        entry.obs = it.defaultObs;
+        setQAEntry(tabId, it.id, { obs: it.defaultObs });
+      }
+
+      obs.value = entry.obs || "";
+      applyTriStateToggleVisual(group, entry.status);
+
+      noBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const keepOpen = getOpenIdsNow();
+
+        const cur = getQAEntry(tabData, it.id).status;
+        const next = (cur === false) ? null : false;
+        setQAEntry(tabId, it.id, { status: next });
+
+        renderQAChecks(tabId, tabsState.tabs[tabId], keepOpen);
+      });
+
+      yesBtn.addEventListener("click", (e) => {
+        e.preventDefault();
+        e.stopPropagation();
+
+        const keepOpen = getOpenIdsNow();
+
+        const cur = getQAEntry(tabData, it.id).status;
+        const next = (cur === true) ? null : true;
+        setQAEntry(tabId, it.id, { status: next });
+
+        renderQAChecks(tabId, tabsState.tabs[tabId], keepOpen);
+      });
+
+      obs.addEventListener("input", () => {
+        setQAEntry(tabId, it.id, { obs: obs.value });
+        updateQAOutput(tabId, tabsState.tabs[tabId]);
+      });
+
+      row.appendChild(txt);
+      row.appendChild(group);
+      row.appendChild(obs);
+
+      block.appendChild(row);
+    });
+
+    body.appendChild(block);
+    item.appendChild(header);
+    item.appendChild(body);
+    container.appendChild(item);
+  });
+
+  const outField = document.createElement("div");
+  outField.className = "field field-full";
+  outField.style.marginTop = "10px";
+
+  const label = document.createElement("label");
+  label.textContent = "Mensagem de QA";
+
+  const out = document.createElement("textarea");
+  out.id = "qaOutput_" + tabId;
+  out.className = "readonly-multiline qa-output";
+  out.readOnly = false;
+  out.rows = 6;
+
+  outField.appendChild(label);
+  outField.appendChild(out);
+
+  container.appendChild(outField);
+
+  updateQAOutput(tabId, tabData);
+}
+
+/* ====================================================================== */
+/* ============================ HELPERS UI ============================== */
+/* ====================================================================== */
 
 export function autoResizeTextareas(tabId) {
   const content = document.getElementById("content_" + tabId);
@@ -30,7 +380,6 @@ export function autoResizeTextareas(tabId) {
   });
 }
 
-// Canais (>0)
 export function renderCanais(tabId, canaisString) {
   const span = document.getElementById("canaisText_" + tabId);
   if (!span) return;
@@ -60,9 +409,10 @@ export function renderCanais(tabId, canaisString) {
   span.textContent = canaisAtivos.join("   ");
 }
 
-// -------- helpers de datas / QR --------
+/* ====================================================================== */
+/* ====================== HELPERS DATAS / QR ============================ */
+/* ====================================================================== */
 
-// Formata "2025-11-17T10:00" -> "2025-11-17 T 10:00"
 function formatBannerDateTime(str) {
   if (!str) return "";
   str = str.trim();
@@ -80,9 +430,6 @@ function formatBannerDateTime(str) {
   return `${date} T ${hhStr}:${mmStr}`;
 }
 
-// ==== HELPERS DE DATA (wait X days + AM/PM) ====
-
-// parseia só a parte de data (YYYY-MM-DD) para cálculo de "wait X days"
 function parseDateOnly(raw) {
   if (!raw) return null;
   const s = String(raw).trim();
@@ -90,7 +437,6 @@ function parseDateOnly(raw) {
 
   let datePart = s;
 
-  // aceita "2025-12-11T16:25" ou "2025-12-11 T 16:25"
   if (s.includes("T")) {
     datePart = s.split("T")[0].trim();
   } else if (s.includes(" ")) {
@@ -119,7 +465,6 @@ function diffInDays(prevRaw, currRaw) {
   return diff;
 }
 
-// monta o texto "(wait X days)" para Push 2+
 function getWaitLabelForPush(pushes, index) {
   if (!Array.isArray(pushes) || index <= 0) return "";
   const current = pushes[index];
@@ -135,15 +480,12 @@ function getWaitLabelForPush(pushes, index) {
   return ` (wait ${diff} ${label})`;
 }
 
-// Monta a URL de QR Code a partir do deeplink
 function buildQrCodeUrl(link) {
   if (!link) return "";
   const encoded = encodeURIComponent(link.trim());
   return `https://api.qrserver.com/v1/create-qr-code/?data=${encoded}&size=300x300`;
 }
 
-
-// versão com dica em AM/PM em formato americano, para datas originais de banner
 function formatBannerDateTimeWithHint(str) {
   const base = formatBannerDateTime(str);
   if (!base) return "";
@@ -197,7 +539,6 @@ function formatBannerDateTimeWithHint(str) {
   return `${base} (${usPart})`;
 }
 
-
 /* ====================================================================== */
 /* =============== RENDERIZAÇÃO PUSH / BANNER / MKTSCREEN =============== */
 /* ====================================================================== */
@@ -245,7 +586,6 @@ export function renderPushList(tabId, pushes) {
     const block = document.createElement("div");
     block.className = "subsection";
 
-    // Data de início original (somente leitura) + "wait X days"
     const originalRaw = p.dataInicioOriginal || p.dataInicio || "";
     const originalFormatted = originalRaw ? formatBannerDateTime(originalRaw) : "";
     const waitLabel = getWaitLabelForPush(pushes, index);
@@ -300,7 +640,7 @@ export function renderPushList(tabId, pushes) {
     const grid = document.createElement("div");
     grid.className = "fields-grid";
 
-        function addInputField(labelText, value, full = false, fieldKey = null, editable = false) {
+    function addInputField(labelText, value, full = false, fieldKey = null, editable = false) {
       const field = document.createElement("div");
       field.className = "field";
       if (full) field.classList.add("field-full");
@@ -330,7 +670,6 @@ export function renderPushList(tabId, pushes) {
           p[fieldKey] = input.value;
           saveState();
 
-          // se mexer na data ou no horário, atualiza o Farol
           if (fieldKey === "dataInicio" || fieldKey === "horarioSaida") {
             updateFarolForTab(tabId);
           }
@@ -342,15 +681,11 @@ export function renderPushList(tabId, pushes) {
       grid.appendChild(field);
     }
 
-
-    // Nome comunicação (read-only)
     addInputField("Nome Comunicação", p.nomeCom, true);
 
-    // Data de início final (editável, já formatada com " T ")
     const formattedStart = p.dataInicio ? formatBannerDateTime(p.dataInicio) : "";
     addInputField("Data de Início (Final)", formattedStart, false, "dataInicio", true);
 
-    // Horário de saída (editável, HH:MM)
     addInputField("Horário de Saída", p.horarioSaida, false, "horarioSaida", true);
 
     const rowTitulos = document.createElement("div");
@@ -500,7 +835,6 @@ export function renderBannerList(tabId, banners) {
 
           saveState();
 
-          // se mexer nas datas finais do banner, atualiza o Farol
           if (fieldKey === "dataInicio" || fieldKey === "dataFim") {
             updateFarolForTab(tabId);
           }
@@ -512,7 +846,6 @@ export function renderBannerList(tabId, banners) {
       grid.appendChild(field);
     }
 
-    // Info topo: datas originais + Obs
     const infoTop = document.createElement("div");
     infoTop.className = "info-group";
 
@@ -559,7 +892,6 @@ export function renderBannerList(tabId, banners) {
     infoTop.appendChild(rowDates);
     block.appendChild(infoTop);
 
-    // Resumo Título/Subtítulo/CTA
     if (b.titulo || b.subtitulo || b.cta) {
       const infoTit = document.createElement("div");
       infoTit.className = "info-group";
@@ -653,7 +985,6 @@ export function renderBannerList(tabId, banners) {
       block.appendChild(layoutGroup);
     }
 
-    // Campos editáveis principais
     addInputField("Nome Experiência", b.nomeExp, true);
 
     const formattedIni = b.dataInicio ? formatBannerDateTime(b.dataInicio) : "";
@@ -664,14 +995,12 @@ export function renderBannerList(tabId, banners) {
     addInputField("Channel", b.channel, false, "channel", true);
     addInputField("Imagem (URL)", b.imagem, true, "imagem", true);
 
-    // Accessibility Text (1 linha, lado a lado com Offer ID)
     const accField = document.createElement("div");
     accField.className = "field";
 
     const accLabel = document.createElement("label");
     accLabel.textContent = "Accessibility Text";
 
-    // agora usamos INPUT normal (mesmo estilo do Offer ID)
     accTextarea = document.createElement("input");
     accTextarea.type = "text";
     accTextarea.className = "input";
@@ -707,7 +1036,6 @@ export function renderBannerList(tabId, banners) {
             saveState();
           }
         } catch {
-          // json inválido, ignora
         }
       } else if (currentTabData) {
         saveState();
@@ -718,8 +1046,6 @@ export function renderBannerList(tabId, banners) {
     accField.appendChild(accTextarea);
     grid.appendChild(accField);
 
-
-    // Número do Offer ID
     const offerField = document.createElement("div");
     offerField.className = "field";
 
@@ -737,7 +1063,6 @@ export function renderBannerList(tabId, banners) {
 
     block.appendChild(grid);
 
-    // preview imagem
     if (b.imagem) {
       const previewBlock = document.createElement("div");
       previewBlock.className = "image-preview-block";
@@ -766,9 +1091,7 @@ export function renderBannerList(tabId, banners) {
       block.appendChild(previewBlock);
     }
 
-    // JSONs
     if (b.json) {
-      // JSON original (read-only)
       const jsonField = document.createElement("div");
       jsonField.className = "field field-full";
 
@@ -786,7 +1109,6 @@ export function renderBannerList(tabId, banners) {
       details.appendChild(pre);
       jsonField.appendChild(details);
 
-      // JSON Final (toggle + editable)
       const jsonFinalField = document.createElement("div");
       jsonFinalField.className = "field field-full";
 
@@ -889,7 +1211,6 @@ export function renderBannerList(tabId, banners) {
               saveState();
             }
           } catch {
-            // json inválido, ignora
           }
         });
       }
@@ -921,7 +1242,6 @@ export function renderMktScreenView(tabId, mkt) {
 
   if (accordion) accordion.style.display = "";
 
-  // Principal (Channel + URL + QR) como toggle
   const geral = document.createElement("div");
   geral.className = "subsection";
 
@@ -1035,7 +1355,6 @@ export function renderMktScreenView(tabId, mkt) {
 
   container.appendChild(principalItem);
 
-  // Blocos
   if (mkt.blocos && mkt.blocos.length > 0) {
     mkt.blocos.forEach((b, index) => {
       const item = document.createElement("div");
@@ -1182,7 +1501,7 @@ function applyToggleVisual(group, on) {
   }
 }
 
-/* ---- Processos por canal ---- */
+/* ======================== PROCESSOS POR CANAL ======================== */
 
 function renderPushProcess(tabId, tabData) {
   const container = document.getElementById("push_process_" + tabId);
@@ -1577,7 +1896,7 @@ function renderMktProcess(tabId, tabData) {
   container.appendChild(accItem);
 }
 
-/* ---- helpers de Farol ---- */
+/* ============================== FAROL ================================ */
 
 function buildPushDateTimeString(p) {
   const raw = (p.dataInicio || "").trim();
@@ -1675,19 +1994,16 @@ function updateFarolForTab(tabId) {
   const tabData = tabsState.tabs[tabId];
   if (!tabData) return;
 
-  // gera o texto novo com base no estado atual (base, pushes, banners, etc.)
   const newText = buildFarolText(tabData);
   tabData.farolText = newText;
   tabsState.tabs[tabId] = tabData;
   saveState();
 
-  // se o textarea do Farol já existe na tela, atualiza ele também
   const area = document.getElementById("farolText_" + tabId);
   if (area) {
     area.value = newText;
   }
 }
-
 
 function renderFarolConclusao(tabId, tabData) {
   const hasPush = (tabData.pushes || []).length > 0;
@@ -1719,7 +2035,6 @@ function renderFarolConclusao(tabId, tabData) {
   const section = document.createElement("div");
   section.className = "subsection";
 
-  // Mensagem do Farol (editável, maior, salva em tabData.farolText)
   const farolField = document.createElement("div");
   farolField.className = "field field-full";
 
@@ -1731,7 +2046,7 @@ function renderFarolConclusao(tabId, tabData) {
   farolArea.className = "readonly-multiline farol-textarea";
   farolArea.rows = 10;
   farolArea.readOnly = false;
-  farolArea.id = "farolText_" + tabId; // <-- id para permitir atualização direta
+  farolArea.id = "farolText_" + tabId;
 
   const initialFarolText =
     tabData.farolText && tabData.farolText.trim() !== ""
@@ -1750,7 +2065,6 @@ function renderFarolConclusao(tabId, tabData) {
   farolField.appendChild(farolArea);
   section.appendChild(farolField);
 
-  // Apenas o link do card (sem mensagem de QA)
   const linkField = document.createElement("div");
   linkField.className = "field field-full";
 
@@ -1783,7 +2097,7 @@ function renderFarolConclusao(tabId, tabData) {
   farolContainer.appendChild(section);
 }
 
-// ----------------- RE-RENDER DOS PROCESSOS PRESERVANDO ABERTOS ---------
+/* ===================== RE-RENDER PROCESSOS ===================== */
 
 function reRenderProcessesForTab(tabId, openIds = []) {
   const tabData = tabsState.tabs[tabId];
@@ -1846,7 +2160,7 @@ function attachProcessHandlers(tabId, tabData) {
   });
 }
 
-/* ---- Função principal de processos (chamada pelo main.js) ---- */
+/* ===================== FUNÇÃO PRINCIPAL ===================== */
 
 export function renderChannelProcesses(tabId, tabData) {
   if (!tabData) return;

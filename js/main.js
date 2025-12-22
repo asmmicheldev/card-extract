@@ -12,7 +12,8 @@ import {
   renderBannerList,
   renderMktScreenView,
   autoResizeTextareas,
-  renderChannelProcesses
+  renderChannelProcesses,
+  renderQAChecks
 } from "./renderers.js";
 
 // ===== helpers de DOM =====
@@ -31,16 +32,13 @@ function setTextValue(id, value) {
   }
 }
 
-// monta o texto da aba a partir do parseTitulo
 function buildTabTitleFromTitulo(titulo) {
   if (!titulo) return "Card";
 
-  // 1) PRIORIDADE: só a descrição da campanha
   if (titulo.descricao && titulo.descricao.trim() !== "") {
     return titulo.descricao.trim();
   }
 
-  // 2) Se por algum motivo não tiver descrição, cai pro que tinha antes
   if (titulo.tituloCompleto && titulo.tituloCompleto.trim() !== "") {
     return titulo.tituloCompleto.trim();
   }
@@ -58,6 +56,8 @@ function ensureProcessStructures(data) {
   if (!data.processFlags) data.processFlags = {};
   if (!data.processChecks) data.processChecks = {};
   if (!data.processMeta) data.processMeta = {};
+  if (!data.qa) data.qa = { items: {} };
+  if (!data.qa.items) data.qa.items = {};
 }
 
 // ===================== UI: CRIAÇÃO DE ABAS =====================
@@ -182,7 +182,7 @@ function createTabFromState(tabId, data) {
       </div>
     </div>
 
-    <!-- Anotações como toggle (neutro, sem amarelo) -->
+    <!-- Anotações -->
     <div class="accordion accordion-tier4">
       <div class="accordion-header" data-accordion-target="notesWrap_${tabId}">
         <span class="accordion-title">Anotações</span>
@@ -196,6 +196,17 @@ function createTabFromState(tabId, data) {
             rows="4"
             oninput="handleNotesChange('${tabId}', this.value)">${data.anotacoes || ""}</textarea>
         </div>
+      </div>
+    </div>
+
+    <!-- ADD: Checks de QA -->
+    <div class="accordion accordion-tier4" style="margin-top:12px;">
+      <div class="accordion-header" data-accordion-target="qaWrap_${tabId}">
+        <span class="accordion-title">Checks de QA</span>
+        <span class="accordion-arrow">▸</span>
+      </div>
+      <div id="qaWrap_${tabId}" class="accordion-body">
+        <div id="qa_container_${tabId}"></div>
       </div>
     </div>
 
@@ -257,6 +268,7 @@ function createTabFromState(tabId, data) {
   renderBannerList(tabId, data.banners || []);
   renderMktScreenView(tabId, data.mktScreen || null);
   renderChannelProcesses(tabId, data);
+  renderQAChecks(tabId, data);
 
   autoResizeTextareas(tabId);
 }
@@ -287,7 +299,8 @@ function createTab() {
     mktScreen: null,
     processFlags: {},
     processChecks: {},
-    processMeta: {}
+    processMeta: {},
+    qa: { items: {} }
   };
 
   createTabFromState(tabId, tabsState.tabs[tabId]);
@@ -331,7 +344,6 @@ function processCard(tabId, texto) {
   const tabData = tabsState.tabs[tabId] || {};
   ensureProcessStructures(tabData);
 
-  // manter dados extras dos PUSH já existentes (data final / horário / etc.)
   const oldPushes = tabData.pushes || [];
   const mergedPushes = pushes.map((p, idx) => {
     const old = oldPushes[idx] || {};
@@ -353,7 +365,6 @@ function processCard(tabId, texto) {
     };
   });
 
-  // manter dados extras dos BANNERS já existentes (datas finais, accText, jsonFinal, offerId)
   const oldBanners = tabData.banners || [];
   const mergedBanners = banners.map((b, idx) => {
     const old = oldBanners[idx] || {};
@@ -432,6 +443,7 @@ function processCard(tabId, texto) {
   renderBannerList(tabId, mergedBanners);
   renderMktScreenView(tabId, mkt);
   renderChannelProcesses(tabId, tabData);
+  renderQAChecks(tabId, tabData);
 
   autoResizeTextareas(tabId);
   saveState();
@@ -518,7 +530,6 @@ function importCardState(tabId) {
 
   const tabTitle = document.querySelector(`#${tabId} .tab-title`);
 
-  // fullTitle = nome completo (quando existir no JSON)
   const fullTitle =
     obj.fullTitle ||
     obj.tituloCompleto ||
@@ -526,7 +537,6 @@ function importCardState(tabId) {
     obj.nome ||
     "Card";
 
-  // title = texto curto da aba (descrição / nome reduzido)
   const displayTitle =
     obj.title ||
     obj.descricao ||
@@ -551,6 +561,7 @@ function importCardState(tabId) {
   renderBannerList(tabId, obj.banners || []);
   renderMktScreenView(tabId, obj.mktScreen || null);
   renderChannelProcesses(tabId, obj);
+  renderQAChecks(tabId, obj);
 
   autoResizeTextareas(tabId);
   saveState();

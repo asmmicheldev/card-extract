@@ -1,6 +1,6 @@
 :root {
     /* Fundo / superfícies */
-    --bg-app: #f5f5f7;          /* fundo geral (quase branco, não dói o olho) */
+    --bg-app: #f5f5f7;          /* fundo geral */
     --bg-section: #ffffff;      /* bloco principal (cards grandes) */
     --bg-surface: #f9fafb;      /* cartões internos / accordions */
     --bg-surface-alt: #f3f4f6;  /* variação leve */
@@ -57,10 +57,12 @@
 
     /* Tier 4 – Farol: neutro/default */
     --tier4-bg: var(--bg-surface);
+    --tier4-bg-active: #e5e7eb;
     --tier4-border: var(--border-subtle);
+
 }
 
-/* Tema base: usa as variáveis acima */
+/* Tema base */
 body {
     font-family: Arial, sans-serif;
     margin: 0;
@@ -83,7 +85,7 @@ body {
     box-shadow: var(--shadow-soft);
 }
 
-/* Títulos das divisões (só usados em alguns pontos) */
+/* Títulos das divisões */
 .section h2 {
     margin-top: 0px;
     margin-bottom: 0px;
@@ -113,7 +115,6 @@ body {
     margin-bottom: 8px;
 }
 
-/* Campo que deve SEMPRE ocupar a linha inteira dentro do grid */
 .field-full {
     grid-column: 1 / -1;
 }
@@ -180,7 +181,7 @@ body {
     min-height: 28px;
     max-height: 28px;
     height: 28px;
-    resize: none;      /* não deixa puxar */
+    resize: none;
 }
 
 /* Textarea maior para Mensagem do Farol (~10 linhas) */
@@ -190,8 +191,8 @@ body {
 
 /* Classe efetivamente usada no Farol */
 .farol-textarea {
-    min-height: 360px;          /* já tínhamos aumentado antes */
-    background: var(--input-bg); /* mesmo fundo "oficial" */
+    min-height: 360px;
+    background: var(--input-bg);
 }
 
 /* Entrada do card: 1 linha só (usada para Card Original e Card Extract) */
@@ -306,7 +307,7 @@ body {
 /* === BLOCO DE CÓDIGO (JSON etc.) === */
 
 .code-block {
-    background: var(--input-readonly-bg); /* mesmo cinza dos campos readonly */
+    background: var(--input-readonly-bg);
     border: 1px solid var(--input-border);
     border-radius: 6px;
     padding: 6px 8px;
@@ -322,15 +323,15 @@ body {
 /* === ABAS === */
 .tabs-container {
     display: flex;
-    align-items: stretch;  /* todas as abas ficam com a mesma altura */
+    align-items: stretch;
     background: var(--bg-surface);
     padding: 6px 12px;
     gap: 6px;
     border-bottom: 1px solid var(--border-subtle);
 
-    flex-wrap: nowrap;   /* uma linha só */
-    overflow-x: auto;    /* scroll horizontal quando lotar */
-    overflow-y: hidden;  /* não cria scroll verticalzinho */
+    flex-wrap: nowrap;
+    overflow-x: auto; 
+    overflow-y: hidden;
 }
 
 /* Aba padrão */
@@ -347,8 +348,8 @@ body {
     cursor: pointer;
     transition: background 0.25s ease, color 0.25s ease, border-color 0.25s ease;
 
-    flex: 0 0 260px;   /* cada aba ~260px de largura */
-    white-space: normal;  /* permite quebra de linha */
+    flex: 0 0 260px;
+    white-space: normal;
 }
 
 .tab:hover {
@@ -397,7 +398,7 @@ body {
     color: var(--tab-text);
     border: 1px dashed var(--tab-border);
     padding: 6px 14px;
-    flex: 0 0 auto;          /* não encolhe excessivamente */
+    flex: 0 0 auto;
     white-space: nowrap;
 }
 
@@ -527,7 +528,7 @@ body {
     border-bottom: 1px solid var(--tier1-border);
 }
 .accordion-tier1 > .accordion-header.open {
-    background: var(--tier1-bg-active);   /* mais vermelho quando aberto */
+    background: var(--tier1-bg-active);
 }
 
 /* Tier 2 – Push 1, Push 2, Banners individuais, blocos da MktScreen */
@@ -536,7 +537,7 @@ body {
     border-bottom: 1px solid var(--tier2-border);
 }
 .accordion-tier2 > .accordion-header.open {
-    background: var(--tier2-bg-active);   /* mais azul quando aberto */
+    background: var(--tier2-bg-active);
 }
 
 /* Tier 3 – Testes, QA e Envio/Ativação + Principal da MktScreen */
@@ -545,14 +546,19 @@ body {
     border-bottom: 1px solid var(--tier3-border);
 }
 .accordion-tier3 > .accordion-header.open {
-    background: var(--tier3-bg-active);   /* mais amarelo quando aberto */
+    background: var(--tier3-bg-active);
 }
 
-/* Tier 4 – Farol, etc. */
+/* Tier 4 – Farol / Anotações / Checks de QA */
 .accordion-tier4 > .accordion-header {
-    background: var(--tier4-bg);
-    border-bottom: 1px solid var(--tier4-border);
+  background: var(--tier4-bg);
+  border-bottom: 1px solid var(--tier4-border);
 }
+
+.accordion-tier4 > .accordion-header.open {
+  background: var(--tier4-bg-active);
+}
+
 
 /* Texto dentro dos tiers */
 .accordion-tier1 .accordion-title,
@@ -609,8 +615,8 @@ button {
 
 /* Bloco da imagem do banner */
 .image-preview-block {
-    margin-top: -10px;   /* diminui espaço logo após o Accessibility Text */
-    margin-bottom: 16px; /* aumenta um pouco o espaço antes dos JSONs */
+    margin-top: -10px;
+    margin-bottom: 16px;
 }
 
 /* Observações gerais de card */
@@ -619,7 +625,7 @@ button {
     resize: vertical;
     max-height: 320px;
     min-height: 160px;
-    background: var(--input-bg); /* mesmo fundo "oficial" de input */
+    background: var(--input-bg);
 }
 
 /* === PROCESSOS (Testes / QA / Farol / Conclusão) === */
@@ -638,11 +644,11 @@ button {
 .process-status {
     font-size: 12px;
     font-weight: 700;
-    color: #166534;        /* mesmo verde do botão "Sim" */
+    color: #166534;
     background: transparent;
     border-radius: 0;
     padding-top: 5px;
-    margin-left: 4px;      /* só um respiro do toggle */
+    margin-left: 4px;
     display: none;
     white-space: nowrap;
 }
@@ -688,7 +694,7 @@ button {
 
 /* Estado selecionado: deixa o chip levemente mais “carregado” */
 .toggle-chip.active {
-    filter: brightness(0.9);          /* escurece ~10% */
+    filter: brightness(0.9);
     box-shadow: inset 0 0 0 1px rgba(0,0,0,0.08);
 }
 
@@ -704,4 +710,49 @@ button {
 
 .link-card:hover {
     text-decoration: underline;
+}
+
+/* ===================== QA CHECKS ===================== */
+
+.qa-item-row {
+  display: grid;
+  grid-template-columns: 1fr auto minmax(220px, 1.2fr);
+  gap: 10px;
+  align-items: center;
+
+  padding: 6px 8px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 6px;
+  background: var(--bg-surface-alt);
+  margin-bottom: 6px;
+}
+
+.qa-item-text {
+  font-size: 13px;
+  color: var(--text-primary);
+  line-height: 1.25;
+}
+
+.qa-obs-input {
+  width: 100%;
+}
+
+.qa-output {
+  min-height: 160px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 12px;
+  background: var(--input-bg);
+}
+
+.qa-output-actions {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 6px;
+}
+
+@media (max-width: 900px) {
+  .qa-item-row {
+    grid-template-columns: 1fr;
+  }
 }
