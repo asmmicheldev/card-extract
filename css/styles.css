@@ -176,6 +176,11 @@ body {
     font-size: 12px;
 }
 
+.status-value {
+  font-weight: 700;
+  color: #1e3a8a;
+}
+
 /* Textarea curta para Accessibility Text (1 linha visual, sem resize) */
 .acc-textarea {
     min-height: 28px;

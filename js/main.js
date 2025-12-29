@@ -20,16 +20,12 @@ import {
 
 function setFieldValue(prefix, tabId, value) {
   const el = document.getElementById(prefix + tabId);
-  if (el) {
-    el.value = value || "";
-  }
+  if (el) el.value = value || "";
 }
 
 function setTextValue(id, value) {
   const el = document.getElementById(id);
-  if (el) {
-    el.textContent = value || "";
-  }
+  if (el) el.textContent = value || "";
 }
 
 function buildTabTitleFromTitulo(titulo) {
@@ -60,14 +56,38 @@ function ensureProcessStructures(data) {
   if (!data.qa.items) data.qa.items = {};
 }
 
+function renderCardLink(tabId, tabData) {
+  const host = document.getElementById("cardLink_" + tabId);
+  if (!host) return;
+
+  host.innerHTML = "";
+
+  const nome =
+    tabData?.fullTitle ||
+    tabData?.tituloCompleto ||
+    tabData?.title ||
+    tabData?.nome ||
+    "Card";
+
+  const url = (tabData?.cardUrl || "").trim();
+
+  if (url) {
+    const a = document.createElement("a");
+    a.href = url;
+    a.target = "_blank";
+    a.rel = "noopener noreferrer";
+    a.className = "link-card";
+    a.textContent = nome;
+    host.appendChild(a);
+  } else {
+    host.textContent = nome;
+  }
+}
+
 // ===================== UI: CRIAÇÃO DE ABAS =====================
 
 function createTabFromState(tabId, data) {
   ensureProcessStructures(data);
-
-  // limpeza defensiva (caso existam dados antigos no localStorage)
-  if ("cardExtract" in data) delete data.cardExtract;
-
   tabsState.tabs[tabId] = data;
 
   const tab = document.createElement("div");
@@ -90,10 +110,7 @@ function createTabFromState(tabId, data) {
     const nomeAba = tabInfo?.title || "Card";
 
     const querFechar = confirm(`Tem certeza que deseja fechar a aba "${nomeAba}"?`);
-
-    if (querFechar) {
-      closeTab(tabId);
-    }
+    if (querFechar) closeTab(tabId);
   };
 
   tab.appendChild(title);
@@ -106,11 +123,10 @@ function createTabFromState(tabId, data) {
   content.className = "section";
   content.id = "content_" + tabId;
 
-  // REMOVIDO: Card Extract + Export/Import
   content.innerHTML = `
     <h2>Card</h2>
     <div class="card-row">
-      <div class="field card-col">
+      <div class="field card-col" style="flex: 1;">
         <label>Card Original</label>
         <textarea
           id="cardOriginal_${tabId}"
@@ -124,6 +140,16 @@ function createTabFromState(tabId, data) {
     <h2>Informações Gerais</h2>
 
     <div class="info-group">
+      <div class="info-row">
+        <span class="info-label">Status:</span>
+        <span id="statusText_${tabId}" class="info-value status-value">CONSTRUINDO</span>
+      </div>
+
+      <div class="info-row">
+        <span class="info-label">Card:</span>
+        <span id="cardLink_${tabId}" class="info-value"></span>
+      </div>
+
       <div class="info-row">
         <span class="info-label">Canais:</span>
         <span id="canaisText_${tabId}" class="info-value"></span>
@@ -178,7 +204,7 @@ function createTabFromState(tabId, data) {
       </div>
     </div>
 
-    <!-- ADD: Checks de QA -->
+    <!-- Checks de QA -->
     <div class="accordion accordion-tier4" style="margin-top:12px;">
       <div class="accordion-header" data-accordion-target="qaWrap_${tabId}">
         <span class="accordion-title">Checks de QA</span>
@@ -239,9 +265,9 @@ function createTabFromState(tabId, data) {
 
   document.getElementById("content-container").appendChild(content);
 
-  if (data.canais) {
-    renderCanais(tabId, data.canais);
-  }
+  renderCardLink(tabId, data);
+
+  if (data.canais) renderCanais(tabId, data.canais);
 
   renderPushList(tabId, data.pushes || []);
   renderBannerList(tabId, data.banners || []);
@@ -258,7 +284,6 @@ function createTab() {
   tabsState.tabs[tabId] = {
     title: "Card",
     input: "",
-    // REMOVIDO: cardExtract
     nome: "",
     fullTitle: "",
     descricao: "",
@@ -290,8 +315,8 @@ function createTab() {
 function switchTab(tabId) {
   tabsState.activeTab = tabId;
 
-  document.querySelectorAll(".tab").forEach((t) => t.classList.remove("active"));
-  document.querySelectorAll(".section").forEach((c) => (c.style.display = "none"));
+  document.querySelectorAll(".tab").forEach(t => t.classList.remove("active"));
+  document.querySelectorAll(".section").forEach(c => (c.style.display = "none"));
 
   const tabEl = document.getElementById(tabId);
   const contentEl = document.getElementById("content_" + tabId);
@@ -312,13 +337,13 @@ function processCard(tabId, texto) {
   const linhas = texto.split(/\r?\n/);
 
   const titulo = parseTitulo(linhas);
-  const info = parseInformacoesGerais(linhas);
-  const dados = parseDados(linhas);
-  const comm = parseCommunications(linhas);
+  const info   = parseInformacoesGerais(linhas);
+  const dados  = parseDados(linhas);
+  const comm   = parseCommunications(linhas);
 
-  const pushes = comm.pushes || [];
+  const pushes  = comm.pushes || [];
   const banners = comm.banners || [];
-  const mkt = comm.mktScreen;
+  const mkt     = comm.mktScreen;
 
   const tabData = tabsState.tabs[tabId] || {};
   ensureProcessStructures(tabData);
@@ -328,7 +353,11 @@ function processCard(tabId, texto) {
     const old = oldPushes[idx] || {};
 
     const newOriginal = p.dataInicioOriginal || p.dataInicio || "";
-    const original = newOriginal || old.dataInicioOriginal || old.dataInicio || "";
+    const original =
+      newOriginal ||
+      old.dataInicioOriginal ||
+      old.dataInicio ||
+      "";
 
     const finalValue = old.dataInicio || p.dataInicio || "";
 
@@ -345,12 +374,20 @@ function processCard(tabId, texto) {
     const old = oldBanners[idx] || {};
 
     const originalInicio =
-      b.dataInicioOriginal || b.dataInicio || old.dataInicioOriginal || old.dataInicio || "";
+      b.dataInicioOriginal ||
+      b.dataInicio ||
+      old.dataInicioOriginal ||
+      old.dataInicio ||
+      "";
     const originalFim =
-      b.dataFimOriginal || b.dataFim || old.dataFimOriginal || old.dataFim || "";
+      b.dataFimOriginal ||
+      b.dataFim ||
+      old.dataFimOriginal ||
+      old.dataFim ||
+      "";
 
     const finalInicio = old.dataInicio || b.dataInicio || "";
-    const finalFim = old.dataFim || b.dataFim || "";
+    const finalFim    = old.dataFim || b.dataFim || "";
 
     return {
       ...b,
@@ -358,9 +395,9 @@ function processCard(tabId, texto) {
       dataFimOriginal: originalFim,
       dataInicio: finalInicio,
       dataFim: finalFim,
-      accText: old.accText || "",
+      accText:   old.accText   || "",
       jsonFinal: old.jsonFinal || "",
-      offerId: old.offerId || ""
+      offerId:   old.offerId   || ""
     };
   });
 
@@ -371,9 +408,7 @@ function processCard(tabId, texto) {
   const fullTitle = titulo.tituloCompleto || tabDisplayTitle;
 
   const tabTitleEl = document.querySelector(`#${tabId} .tab-title`);
-  if (tabTitleEl) {
-    tabTitleEl.textContent = tabDisplayTitle;
-  }
+  if (tabTitleEl) tabTitleEl.textContent = tabDisplayTitle;
 
   setTextValue("desc_" + tabId, titulo.descricao);
   setTextValue("solicitanteText_" + tabId, info.solicitante);
@@ -382,29 +417,31 @@ function processCard(tabId, texto) {
 
   renderCanais(tabId, info.canais);
 
-  tabData.title = tabDisplayTitle; // texto curto da aba
-  tabData.input = texto;
-  tabData.nome = titulo.nome;
-  tabData.fullTitle = fullTitle; // nome completo
+  tabData.title          = tabDisplayTitle;
+  tabData.input          = texto;
+  tabData.nome           = titulo.nome;
+  tabData.fullTitle      = fullTitle;
   tabData.tituloCompleto = titulo.tituloCompleto || "";
-  tabData.descricao = titulo.descricao;
-  tabData.cardUrl = titulo.cardUrl || "";
+  tabData.descricao      = titulo.descricao;
+  tabData.cardUrl        = titulo.cardUrl || "";
 
-  tabData.area = info.area;
+  tabData.area        = info.area;
   tabData.solicitante = info.solicitante;
-  tabData.marca = info.marca;
-  tabData.descCamp = info.descCamp;
-  tabData.canais = info.canais;
-  tabData.tempo = info.tempo;
+  tabData.marca       = info.marca;
+  tabData.descCamp    = info.descCamp;
+  tabData.canais      = info.canais;
+  tabData.tempo       = info.tempo;
 
-  tabData.base = dados.base;
-  tabData.observacao = dados.observacao;
+  tabData.base        = dados.base;
+  tabData.observacao  = dados.observacao;
 
-  tabData.pushes = mergedPushes;
-  tabData.banners = mergedBanners;
-  tabData.mktScreen = mkt;
+  tabData.pushes      = mergedPushes;
+  tabData.banners     = mergedBanners;
+  tabData.mktScreen   = mkt;
 
   tabsState.tabs[tabId] = tabData;
+
+  renderCardLink(tabId, tabData);
 
   renderPushList(tabId, mergedPushes);
   renderBannerList(tabId, mergedBanners);
@@ -485,14 +522,6 @@ document.addEventListener("click", (e) => {
 // ===================== INICIALIZAÇÃO =====================
 
 loadState();
-
-// limpeza global de legado do Export/Import
-for (const id in tabsState.tabs) {
-  if (tabsState.tabs[id] && "cardExtract" in tabsState.tabs[id]) {
-    delete tabsState.tabs[id].cardExtract;
-  }
-}
-saveState();
 
 if (Object.keys(tabsState.tabs).length === 0) {
   createTab();

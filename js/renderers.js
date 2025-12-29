@@ -1501,6 +1501,57 @@ function applyToggleVisual(group, on) {
   }
 }
 
+/* ===================== STATUS (linha Informações Gerais) ===================== */
+
+function computeTabStatus(tabData) {
+  const hasPush = Array.isArray(tabData.pushes) && tabData.pushes.length > 0;
+  const hasBanner = Array.isArray(tabData.banners) && tabData.banners.length > 0;
+  const hasMkt = !!tabData.mktScreen;
+
+  const channels = [];
+  if (hasPush) {
+    channels.push({
+      ready: "pushReadyQA",
+      qa: "pushQAApproved",
+      ativ: "pushAtivacaoApproved",
+      done: "pushMsgGrupo"
+    });
+  }
+  if (hasBanner) {
+    channels.push({
+      ready: "bannerReadyQA",
+      qa: "bannerQAApproved",
+      ativ: "bannerAtivacaoApproved",
+      done: "bannerMsgGrupo"
+    });
+  }
+  if (hasMkt) {
+    channels.push({
+      ready: "mktReadyQA",
+      qa: "mktQAApproved",
+      ativ: "mktAtivacaoApproved",
+      done: "mktMsgGrupo"
+    });
+  }
+
+  if (channels.length === 0) return "CONSTRUINDO";
+
+  const all = (key) => channels.every(ch => getFlag(tabData, ch[key]));
+
+  if (all("done")) return "CANAL CONCLUIDO!";
+  if (all("ativ")) return "ATIVAÇÃO APROVADA!";
+  if (all("qa")) return "QA APROVADO!";
+  if (all("ready")) return "PRONTO PARA QA!";
+
+  return "CONSTRUINDO";
+}
+
+function updateStatusLine(tabId, tabData) {
+  const el = document.getElementById("statusText_" + tabId);
+  if (!el) return;
+  el.textContent = computeTabStatus(tabData);
+}
+
 /* ======================== PROCESSOS POR CANAL ======================== */
 
 function renderPushProcess(tabId, tabData) {
@@ -1513,9 +1564,6 @@ function renderPushProcess(tabId, tabData) {
   if (!pushes.length) {
     return;
   }
-
-  const nomeCard = tabData.fullTitle || tabData.nome || "Sem nome";
-  const cardUrl = tabData.cardUrl || "";
 
   const solicitanteEmail =
     (tabData.solicitanteEmail || tabData.solicitante || "").trim();
@@ -1555,31 +1603,20 @@ function renderPushProcess(tabId, tabData) {
   section.innerHTML = `
     <div class="process-section">
 
+      ${
+        solicitanteHash
+          ? `
       <div class="field field-full">
         <div class="info-group">
-          <div class="info-row">
-            <span class="info-label">Card:</span>
-            <span class="info-value">
-              ${
-                cardUrl
-                  ? `<a href="${cardUrl}" target="_blank" class="link-card">${nomeCard}</a>`
-                  : nomeCard
-              }
-            </span>
-          </div>
-
-          ${
-            solicitanteHash
-              ? `
           <div class="info-row">
             <span class="info-label">Hash do solicitante:</span>
             <span class="info-value">${solicitanteHash}</span>
           </div>
-          `
-              : ""
-          }
         </div>
       </div>
+      `
+          : ""
+      }
 
       <div class="field field-full">
         <label>Testes Aprovados?</label>
@@ -1604,9 +1641,14 @@ function renderPushProcess(tabId, tabData) {
 
       <div class="field field-full" style="${showQA ? "" : "display:none;"}">
         <label>QA Aprovado?</label>
-        <div class="toggle-group" data-flag="pushQAApproved">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
+        <div class="process-row">
+          <div class="toggle-group" data-flag="pushQAApproved">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="pushQAApproved">
+            QA APROVADO!
+          </div>
         </div>
       </div>
 
@@ -1655,9 +1697,6 @@ function renderBannerProcessProcess(tabId, tabData) {
     return;
   }
 
-  const nomeCard = tabData.fullTitle || tabData.nome || "Sem nome";
-  const cardUrl = tabData.cardUrl || "";
-
   const testsApproved = getFlag(tabData, "bannerTestsApproved");
   const showProntoQA = testsApproved;
   const showQA = getFlag(tabData, "bannerReadyQA");
@@ -1693,21 +1732,6 @@ function renderBannerProcessProcess(tabId, tabData) {
     <div class="process-section">
 
       <div class="field field-full">
-        <div class="info-group">
-          <div class="info-row">
-            <span class="info-label">Card:</span>
-            <span class="info-value">
-              ${
-                cardUrl
-                  ? `<a href="${cardUrl}" target="_blank" class="link-card">${nomeCard}</a>`
-                  : nomeCard
-              }
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div class="field field-full">
         <label>Testes Aprovados?</label>
         <div class="toggle-group" data-flag="bannerTestsApproved">
           <button type="button" class="toggle-chip no">Não</button>
@@ -1730,9 +1754,14 @@ function renderBannerProcessProcess(tabId, tabData) {
 
       <div class="field field-full" style="${showQA ? "" : "display:none;"}">
         <label>QA Aprovado?</label>
-        <div class="toggle-group" data-flag="bannerQAApproved">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
+        <div class="process-row">
+          <div class="toggle-group" data-flag="bannerQAApproved">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="bannerQAApproved">
+            QA APROVADO!
+          </div>
         </div>
       </div>
 
@@ -1781,9 +1810,6 @@ function renderMktProcess(tabId, tabData) {
     return;
   }
 
-  const nomeCard = tabData.fullTitle || tabData.nome || "Sem nome";
-  const cardUrl = tabData.cardUrl || "";
-
   const testsApproved = getFlag(tabData, "mktTestsApproved");
   const showProntoQA = testsApproved;
   const showQA = getFlag(tabData, "mktReadyQA");
@@ -1819,21 +1845,6 @@ function renderMktProcess(tabId, tabData) {
     <div class="process-section">
 
       <div class="field field-full">
-        <div class="info-group">
-          <div class="info-row">
-            <span class="info-label">Card:</span>
-            <span class="info-value">
-              ${
-                cardUrl
-                  ? `<a href="${cardUrl}" target="_blank" class="link-card">${nomeCard}</a>`
-                  : nomeCard
-              }
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div class="field field-full">
         <label>Testes Aprovados?</label>
         <div class="toggle-group" data-flag="mktTestsApproved">
           <button type="button" class="toggle-chip no">Não</button>
@@ -1856,9 +1867,14 @@ function renderMktProcess(tabId, tabData) {
 
       <div class="field field-full" style="${showQA ? "" : "display:none;"}">
         <label>QA Aprovado?</label>
-        <div class="toggle-group" data-flag="mktQAApproved">
-          <button type="button" class="toggle-chip no">Não</button>
-          <button type="button" class="toggle-chip yes">Sim</button>
+        <div class="process-row">
+          <div class="toggle-group" data-flag="mktQAApproved">
+            <button type="button" class="toggle-chip no">Não</button>
+            <button type="button" class="toggle-chip yes">Sim</button>
+          </div>
+          <div class="process-status" data-flag-text="mktQAApproved">
+            QA APROVADO!
+          </div>
         </div>
       </div>
 
@@ -2017,9 +2033,6 @@ function renderFarolConclusao(tabId, tabData) {
   if (hasBanner) farolUnlocked = farolUnlocked && getFlag(tabData, "bannerReadyQA");
   if (hasMkt)    farolUnlocked = farolUnlocked && getFlag(tabData, "mktReadyQA");
 
-  const nomeCard = tabData.fullTitle || tabData.nome || "Sem nome";
-  const cardUrl = tabData.cardUrl || "";
-
   const farolAcc = document.getElementById("farolAccordion_" + tabId);
   const farolContainer = document.getElementById("farol_container_" + tabId);
   if (!farolAcc || !farolContainer) return;
@@ -2064,34 +2077,6 @@ function renderFarolConclusao(tabId, tabData) {
 
   farolField.appendChild(farolArea);
   section.appendChild(farolField);
-
-  const linkField = document.createElement("div");
-  linkField.className = "field field-full";
-
-  const infoGroup = document.createElement("div");
-  infoGroup.className = "info-group";
-
-  const rowCard = document.createElement("div");
-  rowCard.className = "info-row";
-
-  const lblCard = document.createElement("span");
-  lblCard.className = "info-label";
-  lblCard.textContent = "Card:";
-
-  const valCard = document.createElement("span");
-  valCard.className = "info-value";
-
-  if (cardUrl) {
-    valCard.innerHTML = `<a href="${cardUrl}" target="_blank" class="link-card">${nomeCard}</a>`;
-  } else {
-    valCard.textContent = nomeCard;
-  }
-
-  rowCard.appendChild(lblCard);
-  rowCard.appendChild(valCard);
-  infoGroup.appendChild(rowCard);
-  linkField.appendChild(infoGroup);
-  section.appendChild(linkField);
 
   farolContainer.innerHTML = "";
   farolContainer.appendChild(section);
@@ -2174,6 +2159,8 @@ export function renderChannelProcesses(tabId, tabData) {
   renderBannerProcessProcess(tabId, tabData);
   renderMktProcess(tabId, tabData);
   renderFarolConclusao(tabId, tabData);
+
+  updateStatusLine(tabId, tabData);
 
   attachProcessHandlers(tabId, tabData);
 }
