@@ -226,46 +226,9 @@ body {
     gap: 4px;
 }
 
-/* Dentro da coluna Card Extract: textarea + coluna de botões à direita */
-.card-extract-row {
-    display: flex;
-    gap: 8px;
-    align-items: stretch;
-}
-
-.card-extract-row textarea {
-    flex: 1;
-}
-
-/* Coluna de botões Export / Import */
-.card-extract-buttons {
-    display: flex;
-    flex-direction: column;
-    gap: 6px;
-    width: 90px;
-}
-
-.card-extract-buttons .btn-secondary {
-    width: 100%;
-}
-
 @media (max-width: 900px) {
     .card-row {
         flex-direction: column;
-    }
-
-    .card-extract-row {
-        flex-direction: column;
-    }
-
-    .card-extract-buttons {
-        width: 100%;
-        flex-direction: row;
-        justify-content: flex-start;
-    }
-
-    .card-extract-buttons .btn-secondary {
-        width: auto;
     }
 }
 
