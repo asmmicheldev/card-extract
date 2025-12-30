@@ -176,9 +176,13 @@ body {
     font-size: 12px;
 }
 
-.status-value {
+.status-value.status-building,
+.status-value.status-ready,
+.status-value.status-qa,
+.status-value.status-ativ,
+.status-value.status-done {
+  color: #e11d48;   /* azul */
   font-weight: 700;
-  color: #1e3a8a;
 }
 
 /* Textarea curta para Accessibility Text (1 linha visual, sem resize) */
@@ -723,4 +727,40 @@ button {
   .qa-item-row {
     grid-template-columns: 1fr;
   }
+}
+
+/* Deixa o lápis com o mesmo "box" do X, alinhado e mais cinza */
+.tab {
+  display: flex;
+  align-items: center;
+}
+
+.edit-tab,
+.close-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+
+  width: 24px;          /* ajuste para bater com seu X */
+  height: 24px;         /* ajuste para bater com seu X */
+  line-height: 24px;
+
+  font-size: 14px;      /* igual ao X (ajuste se necessário) */
+  margin-left: 6px;     /* espaçamento do título */
+  cursor: pointer;
+  user-select: none;
+}
+
+/* Lápis mais acinzentado */
+.edit-tab {
+  color: #9aa0a6;       /* cinza “UI” */
+}
+
+.edit-tab:hover {
+  color: #6f7782;       /* hover um pouco mais escuro */
+}
+
+/* (Opcional) mantém o X como está, ou padroniza também */
+.close-tab {
+  color: inherit;       /* ou a cor que você já usa */
 }

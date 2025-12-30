@@ -1549,7 +1549,25 @@ function computeTabStatus(tabData) {
 function updateStatusLine(tabId, tabData) {
   const el = document.getElementById("statusText_" + tabId);
   if (!el) return;
-  el.textContent = computeTabStatus(tabData);
+
+  const status = computeTabStatus(tabData);
+  el.textContent = status;
+
+  // limpa classes anteriores
+  el.classList.remove(
+    "status-building",
+    "status-ready",
+    "status-qa",
+    "status-ativ",
+    "status-done"
+  );
+
+  // aplica classe conforme o texto do status
+  if (status === "PRONTO PARA QA!") el.classList.add("status-ready");
+  else if (status === "QA APROVADO!") el.classList.add("status-qa");
+  else if (status === "ATIVAÇÃO APROVADA!") el.classList.add("status-ativ");
+  else if (status === "CANAL CONCLUIDO!") el.classList.add("status-done");
+  else el.classList.add("status-building");
 }
 
 /* ======================== PROCESSOS POR CANAL ======================== */

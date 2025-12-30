@@ -28,24 +28,33 @@ function setTextValue(id, value) {
   if (el) el.textContent = value || "";
 }
 
-function buildTabTitleFromTitulo(titulo) {
-  if (!titulo) return "Card";
+/**
+ * Extrai o "título base" da aba a partir do header do card.
+ * Regras:
+ * - Se tiver "|", pega tudo antes do "|"
+ * - Se tiver "[", pega tudo antes do "["
+ * - Se tiver " - " (com espaços), assume "MARCA - CODIGO - ..." e mantém "MARCA - CODIGO"
+ * - Caso contrário, devolve a string toda
+ */
+function extractBaseTabTitle(raw) {
+  const s = (raw || "").trim();
+  if (!s) return "Card";
 
-  if (titulo.descricao && titulo.descricao.trim() !== "") {
-    return titulo.descricao.trim();
-  }
+  if (s.includes("|")) return s.split("|")[0].trim();
+  if (s.includes("[")) return s.split("[")[0].trim();
 
-  if (titulo.tituloCompleto && titulo.tituloCompleto.trim() !== "") {
-    return titulo.tituloCompleto.trim();
-  }
+  const parts = s.split(" - ");
+  // Ex: "XP - INV_B2B... - Campanha ..." => ["XP", "INV_B2B...", "Campanha ..."]
+  // Queremos "XP - INV_B2B..."
+  if (parts.length >= 2) return parts.slice(0, 2).join(" - ").trim();
 
-  if (titulo.nome && titulo.descricao) {
-    return `${titulo.nome} - ${titulo.descricao}`;
-  }
+  return s;
+}
 
-  if (titulo.nome) return titulo.nome;
-
-  return "Card";
+function getFirstNonEmptyLine(texto) {
+  const linhas = (texto || "").split(/\r?\n/);
+  const first = linhas.find(l => String(l || "").trim() !== "");
+  return (first || "").trim();
 }
 
 function ensureProcessStructures(data) {
@@ -54,6 +63,21 @@ function ensureProcessStructures(data) {
   if (!data.processMeta) data.processMeta = {};
   if (!data.qa) data.qa = { items: {} };
   if (!data.qa.items) data.qa.items = {};
+}
+
+function ensureTitleStructures(data) {
+  if (typeof data.baseTitle !== "string") data.baseTitle = "";
+  if (typeof data.customTitle !== "string") data.customTitle = "";
+}
+
+function resolveTabTitle(tabData) {
+  const custom = (tabData?.customTitle || "").trim();
+  if (custom) return custom;
+
+  const base = (tabData?.baseTitle || "").trim();
+  if (base) return base;
+
+  return tabData?.title || tabData?.fullTitle || "Card";
 }
 
 function renderCardLink(tabId, tabData) {
@@ -84,10 +108,90 @@ function renderCardLink(tabId, tabData) {
   }
 }
 
+function updateTabTitleDom(tabId, titleText) {
+  const tabEl = document.getElementById(tabId);
+  if (!tabEl) return;
+  const titleEl = tabEl.querySelector(".tab-title");
+  if (titleEl) titleEl.textContent = titleText || "Card";
+}
+
+function startEditTabTitle(tabId) {
+  const tabEl = document.getElementById(tabId);
+  if (!tabEl) return;
+
+  const currentData = tabsState.tabs[tabId] || {};
+  ensureTitleStructures(currentData);
+
+  const titleSpan = tabEl.querySelector(".tab-title");
+  if (!titleSpan) return;
+
+  const currentTitle = resolveTabTitle(currentData);
+
+  const input = document.createElement("input");
+  input.type = "text";
+  input.className = "tab-title-edit";
+  input.value = currentTitle;
+  input.autocomplete = "off";
+  input.spellcheck = false;
+
+  // Evita trocar de aba enquanto edita
+  input.addEventListener("click", (e) => e.stopPropagation());
+  input.addEventListener("mousedown", (e) => e.stopPropagation());
+
+  let cancelled = false;
+
+  const finish = (commit) => {
+    const tabData = tabsState.tabs[tabId] || {};
+    ensureTitleStructures(tabData);
+
+    if (commit && !cancelled) {
+      const val = (input.value || "").trim();
+      tabData.customTitle = val; // se vazio => volta pro baseTitle
+      tabData.title = resolveTabTitle(tabData); // mantém compatibilidade com usos antigos
+      tabsState.tabs[tabId] = tabData;
+      saveState();
+    }
+
+    const span = document.createElement("span");
+    span.className = "tab-title";
+    span.textContent = resolveTabTitle(tabsState.tabs[tabId] || tabData) || "Card";
+    input.replaceWith(span);
+  };
+
+  input.addEventListener("keydown", (e) => {
+    if (e.key === "Enter") {
+      e.preventDefault();
+      finish(true);
+    }
+    if (e.key === "Escape") {
+      e.preventDefault();
+      cancelled = true;
+      finish(false);
+    }
+  });
+
+  input.addEventListener("blur", () => finish(true));
+
+  titleSpan.replaceWith(input);
+  input.focus();
+  input.select();
+}
+
 // ===================== UI: CRIAÇÃO DE ABAS =====================
 
 function createTabFromState(tabId, data) {
   ensureProcessStructures(data);
+  ensureTitleStructures(data);
+
+  // Migração/garantia: se não tiver baseTitle, tenta derivar do input salvo
+  if (!data.baseTitle || !data.baseTitle.trim()) {
+    const firstLine = getFirstNonEmptyLine(data.input || "");
+    data.baseTitle = extractBaseTabTitle(firstLine);
+  }
+
+  // Garante que o .title exibido fique coerente
+  data.title = resolveTabTitle(data);
+
   tabsState.tabs[tabId] = data;
 
   const tab = document.createElement("div");
@@ -98,7 +202,16 @@ function createTabFromState(tabId, data) {
 
   const title = document.createElement("span");
   title.className = "tab-title";
-  title.textContent = data.title || data.fullTitle || "Card";
+  title.textContent = resolveTabTitle(data);
+
+  const edit = document.createElement("span");
+  edit.className = "edit-tab";
+  edit.title = "Editar nome da aba";
+  edit.textContent = "✎";
+  edit.onclick = (e) => {
+    e.stopPropagation();
+    startEditTabTitle(tabId);
+  };
 
   const close = document.createElement("span");
   close.className = "close-tab";
@@ -107,13 +220,14 @@ function createTabFromState(tabId, data) {
     e.stopPropagation();
 
     const tabInfo = tabsState.tabs[tabId];
-    const nomeAba = tabInfo?.title || "Card";
+    const nomeAba = resolveTabTitle(tabInfo);
 
     const querFechar = confirm(`Tem certeza que deseja fechar a aba "${nomeAba}"?`);
     if (querFechar) closeTab(tabId);
   };
 
   tab.appendChild(title);
+  tab.appendChild(edit);
   tab.appendChild(close);
 
   const addBtn = document.getElementById("add-tab");
@@ -283,6 +397,8 @@ function createTab() {
 
   tabsState.tabs[tabId] = {
     title: "Card",
+    baseTitle: "Card",
+    customTitle: "",
     input: "",
     nome: "",
     fullTitle: "",
@@ -347,6 +463,7 @@ function processCard(tabId, texto) {
 
   const tabData = tabsState.tabs[tabId] || {};
   ensureProcessStructures(tabData);
+  ensureTitleStructures(tabData);
 
   const oldPushes = tabData.pushes || [];
   const mergedPushes = pushes.map((p, idx) => {
@@ -404,11 +521,20 @@ function processCard(tabId, texto) {
   setFieldValue("nome_", tabId, titulo.nome);
   setFieldValue("base_", tabId, dados.base);
 
-  const tabDisplayTitle = buildTabTitleFromTitulo(titulo);
-  const fullTitle = titulo.tituloCompleto || tabDisplayTitle;
+  // ===== TÍTULO DA ABA: determinístico (prefixo do header), com override manual =====
+  const rawHeader = getFirstNonEmptyLine(texto) || (titulo.tituloCompleto || "");
+  const baseTitle = extractBaseTabTitle(rawHeader);
 
-  const tabTitleEl = document.querySelector(`#${tabId} .tab-title`);
-  if (tabTitleEl) tabTitleEl.textContent = tabDisplayTitle;
+  tabData.baseTitle = baseTitle || tabData.baseTitle || "Card";
+
+  // Se tiver customTitle, NUNCA sobrescreve com parsing
+  const displayTitle = resolveTabTitle(tabData);
+  tabData.title = displayTitle;
+
+  updateTabTitleDom(tabId, displayTitle);
+
+  // ===== resto do processamento =====
+  const fullTitle = titulo.tituloCompleto || displayTitle;
 
   setTextValue("desc_" + tabId, titulo.descricao);
   setTextValue("solicitanteText_" + tabId, info.solicitante);
@@ -417,7 +543,6 @@ function processCard(tabId, texto) {
 
   renderCanais(tabId, info.canais);
 
-  tabData.title          = tabDisplayTitle;
   tabData.input          = texto;
   tabData.nome           = titulo.nome;
   tabData.fullTitle      = fullTitle;
