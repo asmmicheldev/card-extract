@@ -25,11 +25,9 @@ export function parseTitulo(linhas) {
   if (tituloLinha) {
     const partes = tituloLinha.split(" - ");
     if (partes.length >= 3) {
-      // XP - CODIGO - Descrição...
       nome = partes[1].trim();
       desc = partes.slice(2).join(" - ").trim();
     } else if (partes.length === 2) {
-      // RICO - CODIGO   |   CLEAR - CODIGO
       nome = partes[1].trim();
       desc = partes[1].trim();
     } else {
@@ -157,14 +155,17 @@ export function parseDados(linhas) {
 
 export function splitCommunications(linhas) {
   const blocks = [];
+
   for (let i = 0; i < linhas.length; i++) {
     const line = linhas[i].trim();
     if (line.startsWith("---------- COMUNICAÇÃO")) {
       const header = line;
       let j = i + 1;
+
       while (j < linhas.length && !linhas[j].trim().startsWith("---------- COMUNICAÇÃO")) {
         j++;
       }
+
       const subset = linhas.slice(i + 1, j);
 
       let numero = null;
@@ -182,7 +183,97 @@ export function splitCommunications(linhas) {
       i = j - 1;
     }
   }
+
   return blocks;
+}
+
+// ---- Email ----
+export function parseEmailBlock(subset) {
+  let posicaoJornada = "";
+  let dataInicio = "";
+  let nomeCom = "";
+  let caminhoContentBuilder = "";
+  let sender = "";
+  let assunto = "";
+  let preHeader = "";
+  let ctaType = "";
+  let cta = "";
+  let observacao = "";
+
+  subset.forEach(linhaRaw => {
+    const linha = linhaRaw.trim();
+    if (!linha) return;
+
+    if (linha.startsWith("posicaoJornada:")) {
+      posicaoJornada = linha.split(":")[1].trim();
+    } else if (linha.startsWith("dataInicio:")) {
+      dataInicio = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Nome Comunicação:")) {
+      nomeCom = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Caminho Content Builder:")) {
+      caminhoContentBuilder = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Sender:")) {
+      sender = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Assunto:")) {
+      assunto = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Pre Header:")) {
+      preHeader = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("CTA Type:")) {
+      ctaType = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("CTA:")) {
+      cta = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Observação:")) {
+      observacao = linha.split(":").slice(1).join(":").trim();
+    }
+  });
+
+  return {
+    posicaoJornada,
+    dataInicio,
+    nomeCom,
+    caminhoContentBuilder,
+    sender,
+    assunto,
+    preHeader,
+    ctaType,
+    cta,
+    observacao
+  };
+}
+
+// ---- WhatsApp ----
+export function parseWhatsAppBlock(subset) {
+  let posicaoJornada = "";
+  let dataInicio = "";
+  let nomeCom = "";
+  let json = "";
+
+  for (let i = 0; i < subset.length; i++) {
+    const linha = subset[i].trim();
+    if (!linha) continue;
+
+    if (linha.startsWith("posicaoJornada:")) {
+      posicaoJornada = linha.split(":")[1].trim();
+    } else if (linha.startsWith("dataInicio:")) {
+      dataInicio = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Nome Comunicação:")) {
+      nomeCom = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Json:")) {
+      const jsonLines = [];
+      for (let j = i + 1; j < subset.length; j++) {
+        jsonLines.push(subset[j]);
+      }
+      json = jsonLines.join("\n").trim();
+      break;
+    }
+  }
+
+  return {
+    posicaoJornada,
+    dataInicio,
+    nomeCom,
+    json
+  };
 }
 
 // ---- Push ----
@@ -210,7 +301,11 @@ export function parsePushBlock(subset) {
       nomeCom = linha.split(":").slice(1).join(":").trim();
     } else if (linha.startsWith("Título:")) {
       titulo = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Titulo:")) {
+      titulo = linha.split(":").slice(1).join(":").trim();
     } else if (linha.startsWith("Subtítulo:")) {
+      subtitulo = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Subtitulo:")) {
       subtitulo = linha.split(":").slice(1).join(":").trim();
     } else if (linha.startsWith("CTA Type:")) {
       ctaType = linha.split(":").slice(1).join(":").trim();
@@ -289,10 +384,18 @@ export function parseBannerBlock(subset) {
     } else if (linha.startsWith("Template:")) {
       template = linha.split(":")[1].trim();
     } else if (linha.startsWith("ComponentStyle:")) {
-      componentStyle = linha.split(":")[1].trim();
+      componentStyle = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("ComponentStyle (do JSON):")) {
+      componentStyle = linha.split(":").slice(1).join(":").trim();
     } else if (linha.startsWith("Titulo:")) {
       titulo = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Título:")) {
+      titulo = linha.split(":").slice(1).join(":").trim();
     } else if (linha.startsWith("Subtitulo:")) {
+      subtitulo = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Subtítulo:")) {
+      subtitulo = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Descrição:")) {
       subtitulo = linha.split(":").slice(1).join(":").trim();
     } else if (linha.startsWith("CTA:")) {
       cta = linha.split(":").slice(1).join(":").trim();
@@ -328,6 +431,84 @@ export function parseBannerBlock(subset) {
     cta,
     url,
     imagem,
+    observacao,
+    json
+  };
+}
+
+// ---- InApp ----
+export function parseInAppBlock(subset) {
+  let posicaoJornada = "";
+  let dataInicio = "";
+  let dataFim = "";
+  let nomeCampanha = "";
+  let nomeExp = "";
+  let tela = "";
+  let tipoInapp = "";
+  let titulo = "";
+  let subtitulo = "";
+  let cta = "";
+  let imagem = "";
+  let url = "";
+  let observacao = "";
+  let json = "";
+
+  subset.forEach((linhaRaw, idx) => {
+    const linha = linhaRaw.trim();
+    if (!linha) return;
+
+    if (linha.startsWith("posicaoJornada:")) {
+      posicaoJornada = linha.split(":")[1].trim();
+    } else if (linha.startsWith("dataInicio:")) {
+      dataInicio = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("dataFim:")) {
+      dataFim = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Nome Campanha:")) {
+      nomeCampanha = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Nome Experiência:")) {
+      nomeExp = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Tela:")) {
+      tela = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Tipo Inapp:")) {
+      tipoInapp = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Titulo:")) {
+      titulo = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Título:")) {
+      titulo = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Subtitulo:")) {
+      subtitulo = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Subtítulo:")) {
+      subtitulo = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("CTA:")) {
+      cta = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("URL Imagem:")) {
+      imagem = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("URL de Redirecionamento:")) {
+      url = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("Observação:")) {
+      observacao = linha.split(":").slice(1).join(":").trim();
+    } else if (linha.startsWith("JSON InApp:")) {
+      const jsonLines = [];
+      for (let j = idx + 1; j < subset.length; j++) {
+        jsonLines.push(subset[j]);
+      }
+      json = jsonLines.join("\n").trim();
+    }
+  });
+
+  return {
+    posicaoJornada,
+    dataInicio,
+    dataFim,
+    nomeCampanha,
+    nomeExp,
+    tela,
+    tipoInapp,
+    titulo,
+    subtitulo,
+    cta,
+    imagem,
+    url,
     observacao,
     json
   };
@@ -446,12 +627,29 @@ export function parseMktScreenBlock(subset) {
 export function parseCommunications(linhas) {
   const blocks = splitCommunications(linhas);
 
+  const emails = [];
+  const whatsApps = [];
   const pushes = [];
   const banners = [];
+  const inApps = [];
   let mktScreen = null;
 
   blocks.forEach(b => {
-    if (b.tipo === "PUSH") {
+    if (b.tipo === "EMAIL") {
+      const parsed = parseEmailBlock(b.lines);
+      emails.push({
+        numero: b.numero,
+        posicaoHeader: b.posicao,
+        ...parsed
+      });
+    } else if (b.tipo === "WHATSAPP") {
+      const parsed = parseWhatsAppBlock(b.lines);
+      whatsApps.push({
+        numero: b.numero,
+        posicaoHeader: b.posicao,
+        ...parsed
+      });
+    } else if (b.tipo === "PUSH") {
       const parsed = parsePushBlock(b.lines);
       pushes.push({
         numero: b.numero,
@@ -464,6 +662,13 @@ export function parseCommunications(linhas) {
         numero: b.numero,
         ...parsed
       });
+    } else if (b.tipo === "INAPP") {
+      const parsed = parseInAppBlock(b.lines);
+      inApps.push({
+        numero: b.numero,
+        posicaoHeader: b.posicao,
+        ...parsed
+      });
     } else if (b.tipo === "MKTSCREEN") {
       const parsed = parseMktScreenBlock(b.lines);
       mktScreen = {
@@ -474,5 +679,5 @@ export function parseCommunications(linhas) {
     }
   });
 
-  return { pushes, banners, mktScreen };
+  return { emails, whatsApps, pushes, banners, inApps, mktScreen };
 }

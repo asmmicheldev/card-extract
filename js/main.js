@@ -8,8 +8,11 @@ import {
 } from "./parsers.js";
 import {
   renderCanais,
+  renderEmailList,
+  renderWhatsAppList,
   renderPushList,
   renderBannerList,
+  renderInAppList,
   renderMktScreenView,
   renderFarolPanel,
   autoResizeTextareas
@@ -157,6 +160,28 @@ function startEditTabTitle(tabId) {
   input.select();
 }
 
+function mergeEmails(oldEmails = [], newEmails = []) {
+  return newEmails.map((e, idx) => {
+    const old = oldEmails[idx] || {};
+    return {
+      ...e,
+      assunto: old.assunto || e.assunto || "",
+      preHeader: old.preHeader || e.preHeader || "",
+      cta: old.cta || e.cta || ""
+    };
+  });
+}
+
+function mergeWhatsApps(oldWhatsApps = [], newWhatsApps = []) {
+  return newWhatsApps.map((w, idx) => {
+    const old = oldWhatsApps[idx] || {};
+    return {
+      ...w,
+      json: old.json || w.json || ""
+    };
+  });
+}
+
 function mergePushes(oldPushes = [], newPushes = []) {
   return newPushes.map((p, idx) => {
     const old = oldPushes[idx] || {};
@@ -178,6 +203,17 @@ function mergeBanners(oldBanners = [], newBanners = []) {
       imagem: old.imagem || b.imagem || "",
       accText: old.accText || "",
       jsonFinal: old.jsonFinal || ""
+    };
+  });
+}
+
+function mergeInApps(oldInApps = [], newInApps = []) {
+  return newInApps.map((iapp, idx) => {
+    const old = oldInApps[idx] || {};
+    return {
+      ...iapp,
+      imagem: old.imagem || iapp.imagem || "",
+      jsonFinal: old.jsonFinal || iapp.json || ""
     };
   });
 }
@@ -356,7 +392,29 @@ function createTabFromState(tabId, data) {
       </div>
     </div>
 
-    <!-- Push pai -->
+    <!-- Email -->
+    <div class="accordion accordion-tier1">
+      <div class="accordion-header" data-accordion-target="emailWrap_${tabId}">
+        <span class="accordion-title">Email</span>
+        <span class="accordion-arrow">▸</span>
+      </div>
+      <div id="emailWrap_${tabId}" class="accordion-body">
+        <div id="email_container_${tabId}"></div>
+      </div>
+    </div>
+
+    <!-- WhatsApp -->
+    <div class="accordion accordion-tier1">
+      <div class="accordion-header" data-accordion-target="whatsAppWrap_${tabId}">
+        <span class="accordion-title">WhatsApp</span>
+        <span class="accordion-arrow">▸</span>
+      </div>
+      <div id="whatsAppWrap_${tabId}" class="accordion-body">
+        <div id="whatsApp_container_${tabId}"></div>
+      </div>
+    </div>
+
+    <!-- Push -->
     <div class="accordion accordion-tier1">
       <div class="accordion-header" data-accordion-target="pushWrap_${tabId}">
         <span class="accordion-title">Push</span>
@@ -367,7 +425,7 @@ function createTabFromState(tabId, data) {
       </div>
     </div>
 
-    <!-- Banner pai -->
+    <!-- Banner -->
     <div class="accordion accordion-tier1">
       <div class="accordion-header" data-accordion-target="bannerWrap_${tabId}">
         <span class="accordion-title">Banner</span>
@@ -378,7 +436,18 @@ function createTabFromState(tabId, data) {
       </div>
     </div>
 
-    <!-- MktScreen pai -->
+    <!-- InApp -->
+    <div class="accordion accordion-tier1">
+      <div class="accordion-header" data-accordion-target="inAppWrap_${tabId}">
+        <span class="accordion-title">InApp</span>
+        <span class="accordion-arrow">▸</span>
+      </div>
+      <div id="inAppWrap_${tabId}" class="accordion-body">
+        <div id="inApp_container_${tabId}"></div>
+      </div>
+    </div>
+
+    <!-- MktScreen -->
     <div class="accordion accordion-tier1">
       <div class="accordion-header" data-accordion-target="mktWrap_${tabId}">
         <span class="accordion-title">Marketing Screen</span>
@@ -396,8 +465,11 @@ function createTabFromState(tabId, data) {
 
   if (data.canais) renderCanais(tabId, data.canais);
 
+  renderEmailList(tabId, data.emails || []);
+  renderWhatsAppList(tabId, data.whatsApps || []);
   renderPushList(tabId, data.pushes || []);
   renderBannerList(tabId, data.banners || []);
+  renderInAppList(tabId, data.inApps || []);
   renderMktScreenView(tabId, data.mktScreen || null);
   renderFarolPanel(tabId, data);
 
@@ -426,8 +498,12 @@ function createTab() {
     observacao: "",
     anotacoes: "",
     farolText: "",
+    farolAutoText: "",
+    emails: [],
+    whatsApps: [],
     pushes: [],
     banners: [],
+    inApps: [],
     mktScreen: null
   };
 
@@ -461,19 +537,25 @@ function processCard(tabId, texto) {
   const linhas = texto.split(/\r?\n/);
 
   const titulo = parseTitulo(linhas);
-  const info   = parseInformacoesGerais(linhas);
-  const dados  = parseDados(linhas);
-  const comm   = parseCommunications(linhas);
+  const info = parseInformacoesGerais(linhas);
+  const dados = parseDados(linhas);
+  const comm = parseCommunications(linhas);
 
+  const emails = comm.emails || [];
+  const whatsApps = comm.whatsApps || [];
   const pushes = comm.pushes || [];
   const banners = comm.banners || [];
+  const inApps = comm.inApps || [];
   const mkt = comm.mktScreen;
 
   const tabData = tabsState.tabs[tabId] || {};
   ensureTitleStructures(tabData);
 
+  const mergedEmails = mergeEmails(tabData.emails || [], emails);
+  const mergedWhatsApps = mergeWhatsApps(tabData.whatsApps || [], whatsApps);
   const mergedPushes = mergePushes(tabData.pushes || [], pushes);
   const mergedBanners = mergeBanners(tabData.banners || [], banners);
+  const mergedInApps = mergeInApps(tabData.inApps || [], inApps);
   const mergedMkt = mergeMktScreen(tabData.mktScreen || null, mkt);
 
   setFieldValue("nome_", tabId, titulo.nome);
@@ -515,15 +597,21 @@ function processCard(tabId, texto) {
   tabData.base = dados.base;
   tabData.observacao = dados.observacao;
 
+  tabData.emails = mergedEmails;
+  tabData.whatsApps = mergedWhatsApps;
   tabData.pushes = mergedPushes;
   tabData.banners = mergedBanners;
+  tabData.inApps = mergedInApps;
   tabData.mktScreen = mergedMkt;
 
   tabsState.tabs[tabId] = tabData;
 
   renderCardLink(tabId, tabData);
+  renderEmailList(tabId, mergedEmails);
+  renderWhatsAppList(tabId, mergedWhatsApps);
   renderPushList(tabId, mergedPushes);
   renderBannerList(tabId, mergedBanners);
+  renderInAppList(tabId, mergedInApps);
   renderMktScreenView(tabId, mergedMkt);
   renderFarolPanel(tabId, tabData);
 
@@ -612,7 +700,7 @@ loadState();
 if (Object.keys(tabsState.tabs).length === 0) {
   createTab();
 } else {
-  for (const tabId in tabsState.tabs) {
+    for (const tabId in tabsState.tabs) {
     createTabFromState(tabId, tabsState.tabs[tabId]);
   }
 
