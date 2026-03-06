@@ -11,9 +11,8 @@ import {
   renderPushList,
   renderBannerList,
   renderMktScreenView,
-  autoResizeTextareas,
-  renderChannelProcesses,
-  renderQAChecks
+  renderFarolPanel,
+  autoResizeTextareas
 } from "./renderers.js";
 
 // ===== helpers de DOM =====
@@ -28,14 +27,6 @@ function setTextValue(id, value) {
   if (el) el.textContent = value || "";
 }
 
-/**
- * Extrai o "título base" da aba a partir do header do card.
- * Regras:
- * - Se tiver "|", pega tudo antes do "|"
- * - Se tiver "[", pega tudo antes do "["
- * - Se tiver " - " (com espaços), assume "MARCA - CODIGO - ..." e mantém "MARCA - CODIGO"
- * - Caso contrário, devolve a string toda
- */
 function extractBaseTabTitle(raw) {
   const s = (raw || "").trim();
   if (!s) return "Card";
@@ -44,8 +35,6 @@ function extractBaseTabTitle(raw) {
   if (s.includes("[")) return s.split("[")[0].trim();
 
   const parts = s.split(" - ");
-  // Ex: "XP - INV_B2B... - Campanha ..." => ["XP", "INV_B2B...", "Campanha ..."]
-  // Queremos "XP - INV_B2B..."
   if (parts.length >= 2) return parts.slice(0, 2).join(" - ").trim();
 
   return s;
@@ -55,14 +44,6 @@ function getFirstNonEmptyLine(texto) {
   const linhas = (texto || "").split(/\r?\n/);
   const first = linhas.find(l => String(l || "").trim() !== "");
   return (first || "").trim();
-}
-
-function ensureProcessStructures(data) {
-  if (!data.processFlags) data.processFlags = {};
-  if (!data.processChecks) data.processChecks = {};
-  if (!data.processMeta) data.processMeta = {};
-  if (!data.qa) data.qa = { items: {} };
-  if (!data.qa.items) data.qa.items = {};
 }
 
 function ensureTitleStructures(data) {
@@ -134,7 +115,6 @@ function startEditTabTitle(tabId) {
   input.autocomplete = "off";
   input.spellcheck = false;
 
-  // Evita trocar de aba enquanto edita
   input.addEventListener("click", (e) => e.stopPropagation());
   input.addEventListener("mousedown", (e) => e.stopPropagation());
 
@@ -146,8 +126,8 @@ function startEditTabTitle(tabId) {
 
     if (commit && !cancelled) {
       const val = (input.value || "").trim();
-      tabData.customTitle = val; // se vazio => volta pro baseTitle
-      tabData.title = resolveTabTitle(tabData); // mantém compatibilidade com usos antigos
+      tabData.customTitle = val;
+      tabData.title = resolveTabTitle(tabData);
       tabsState.tabs[tabId] = tabData;
       saveState();
     }
@@ -177,21 +157,63 @@ function startEditTabTitle(tabId) {
   input.select();
 }
 
+function mergePushes(oldPushes = [], newPushes = []) {
+  return newPushes.map((p, idx) => {
+    const old = oldPushes[idx] || {};
+    return {
+      ...p,
+      titulo: old.titulo || p.titulo || "",
+      subtitulo: old.subtitulo || p.subtitulo || "",
+      url: old.url || p.url || ""
+    };
+  });
+}
+
+function mergeBanners(oldBanners = [], newBanners = []) {
+  return newBanners.map((b, idx) => {
+    const old = oldBanners[idx] || {};
+    return {
+      ...b,
+      channel: old.channel || b.channel || "",
+      imagem: old.imagem || b.imagem || "",
+      accText: old.accText || "",
+      jsonFinal: old.jsonFinal || ""
+    };
+  });
+}
+
+function mergeMktScreen(oldMkt, newMkt) {
+  if (!newMkt) return null;
+  if (!oldMkt) return newMkt;
+
+  const oldBlocos = Array.isArray(oldMkt.blocos) ? oldMkt.blocos : [];
+  const newBlocos = Array.isArray(newMkt.blocos) ? newMkt.blocos : [];
+
+  return {
+    ...newMkt,
+    channel: oldMkt.channel || newMkt.channel || "",
+    url: oldMkt.url || newMkt.url || "",
+    blocos: newBlocos.map((b, idx) => {
+      const old = oldBlocos[idx] || {};
+      return {
+        ...b,
+        json: old.json || b.json || ""
+      };
+    })
+  };
+}
+
 // ===================== UI: CRIAÇÃO DE ABAS =====================
 
 function createTabFromState(tabId, data) {
-  ensureProcessStructures(data);
   ensureTitleStructures(data);
 
-  // Migração/garantia: se não tiver baseTitle, tenta derivar do input salvo
   if (!data.baseTitle || !data.baseTitle.trim()) {
     const firstLine = getFirstNonEmptyLine(data.input || "");
     data.baseTitle = extractBaseTabTitle(firstLine);
   }
 
-  // Garante que o .title exibido fique coerente
   data.title = resolveTabTitle(data);
-
   tabsState.tabs[tabId] = data;
 
   const tab = document.createElement("div");
@@ -287,7 +309,12 @@ function createTabFromState(tabId, data) {
     <div class="fields-grid">
       <div class="field">
         <label>Nome do Card / Jornada</label>
-        <input id="nome_${tabId}" class="readonly" type="text" readonly value="${data.nome || ""}">
+        <input
+          id="nome_${tabId}"
+          class="input"
+          type="text"
+          value="${data.nome || ""}"
+          oninput="handleNomeChange('${tabId}', this.value)">
       </div>
 
       <div class="field">
@@ -318,19 +345,8 @@ function createTabFromState(tabId, data) {
       </div>
     </div>
 
-    <!-- Checks de QA -->
-    <div class="accordion accordion-tier4" style="margin-top:12px;">
-      <div class="accordion-header" data-accordion-target="qaWrap_${tabId}">
-        <span class="accordion-title">Checks de QA</span>
-        <span class="accordion-arrow">▸</span>
-      </div>
-      <div id="qaWrap_${tabId}" class="accordion-body">
-        <div id="qa_container_${tabId}"></div>
-      </div>
-    </div>
-
     <!-- Farol -->
-    <div id="farolAccordion_${tabId}" class="accordion accordion-tier4" style="display:none;">
+    <div id="farolAccordion_${tabId}" class="accordion accordion-tier3">
       <div class="accordion-header" data-accordion-target="farolWrap_${tabId}">
         <span class="accordion-title">Farol</span>
         <span class="accordion-arrow">▸</span>
@@ -347,7 +363,6 @@ function createTabFromState(tabId, data) {
         <span class="accordion-arrow">▸</span>
       </div>
       <div id="pushWrap_${tabId}" class="accordion-body">
-        <div id="push_process_${tabId}"></div>
         <div id="push_container_${tabId}"></div>
       </div>
     </div>
@@ -359,7 +374,6 @@ function createTabFromState(tabId, data) {
         <span class="accordion-arrow">▸</span>
       </div>
       <div id="bannerWrap_${tabId}" class="accordion-body">
-        <div id="banner_process_${tabId}"></div>
         <div id="banner_container_${tabId}"></div>
       </div>
     </div>
@@ -371,7 +385,6 @@ function createTabFromState(tabId, data) {
         <span class="accordion-arrow">▸</span>
       </div>
       <div id="mktWrap_${tabId}" class="accordion-body">
-        <div id="mkt_process_${tabId}"></div>
         <div id="mkt_container_${tabId}"></div>
       </div>
     </div>
@@ -386,8 +399,7 @@ function createTabFromState(tabId, data) {
   renderPushList(tabId, data.pushes || []);
   renderBannerList(tabId, data.banners || []);
   renderMktScreenView(tabId, data.mktScreen || null);
-  renderChannelProcesses(tabId, data);
-  renderQAChecks(tabId, data);
+  renderFarolPanel(tabId, data);
 
   autoResizeTextareas(tabId);
 }
@@ -416,11 +428,7 @@ function createTab() {
     farolText: "",
     pushes: [],
     banners: [],
-    mktScreen: null,
-    processFlags: {},
-    processChecks: {},
-    processMeta: {},
-    qa: { items: {} }
+    mktScreen: null
   };
 
   createTabFromState(tabId, tabsState.tabs[tabId]);
@@ -457,83 +465,30 @@ function processCard(tabId, texto) {
   const dados  = parseDados(linhas);
   const comm   = parseCommunications(linhas);
 
-  const pushes  = comm.pushes || [];
+  const pushes = comm.pushes || [];
   const banners = comm.banners || [];
-  const mkt     = comm.mktScreen;
+  const mkt = comm.mktScreen;
 
   const tabData = tabsState.tabs[tabId] || {};
-  ensureProcessStructures(tabData);
   ensureTitleStructures(tabData);
 
-  const oldPushes = tabData.pushes || [];
-  const mergedPushes = pushes.map((p, idx) => {
-    const old = oldPushes[idx] || {};
-
-    const newOriginal = p.dataInicioOriginal || p.dataInicio || "";
-    const original =
-      newOriginal ||
-      old.dataInicioOriginal ||
-      old.dataInicio ||
-      "";
-
-    const finalValue = old.dataInicio || p.dataInicio || "";
-
-    return {
-      ...p,
-      dataInicioOriginal: original,
-      dataInicio: finalValue,
-      horarioSaida: old.horarioSaida || ""
-    };
-  });
-
-  const oldBanners = tabData.banners || [];
-  const mergedBanners = banners.map((b, idx) => {
-    const old = oldBanners[idx] || {};
-
-    const originalInicio =
-      b.dataInicioOriginal ||
-      b.dataInicio ||
-      old.dataInicioOriginal ||
-      old.dataInicio ||
-      "";
-    const originalFim =
-      b.dataFimOriginal ||
-      b.dataFim ||
-      old.dataFimOriginal ||
-      old.dataFim ||
-      "";
-
-    const finalInicio = old.dataInicio || b.dataInicio || "";
-    const finalFim    = old.dataFim || b.dataFim || "";
-
-    return {
-      ...b,
-      dataInicioOriginal: originalInicio,
-      dataFimOriginal: originalFim,
-      dataInicio: finalInicio,
-      dataFim: finalFim,
-      accText:   old.accText   || "",
-      jsonFinal: old.jsonFinal || "",
-      offerId:   old.offerId   || ""
-    };
-  });
+  const mergedPushes = mergePushes(tabData.pushes || [], pushes);
+  const mergedBanners = mergeBanners(tabData.banners || [], banners);
+  const mergedMkt = mergeMktScreen(tabData.mktScreen || null, mkt);
 
   setFieldValue("nome_", tabId, titulo.nome);
   setFieldValue("base_", tabId, dados.base);
 
-  // ===== TÍTULO DA ABA: determinístico (prefixo do header), com override manual =====
   const rawHeader = getFirstNonEmptyLine(texto) || (titulo.tituloCompleto || "");
   const baseTitle = extractBaseTabTitle(rawHeader);
 
   tabData.baseTitle = baseTitle || tabData.baseTitle || "Card";
 
-  // Se tiver customTitle, NUNCA sobrescreve com parsing
   const displayTitle = resolveTabTitle(tabData);
   tabData.title = displayTitle;
 
   updateTabTitleDom(tabId, displayTitle);
 
-  // ===== resto do processamento =====
   const fullTitle = titulo.tituloCompleto || displayTitle;
 
   setTextValue("desc_" + tabId, titulo.descricao);
@@ -543,36 +498,34 @@ function processCard(tabId, texto) {
 
   renderCanais(tabId, info.canais);
 
-  tabData.input          = texto;
-  tabData.nome           = titulo.nome;
-  tabData.fullTitle      = fullTitle;
+  tabData.input = texto;
+  tabData.nome = titulo.nome;
+  tabData.fullTitle = fullTitle;
   tabData.tituloCompleto = titulo.tituloCompleto || "";
-  tabData.descricao      = titulo.descricao;
-  tabData.cardUrl        = titulo.cardUrl || "";
+  tabData.descricao = titulo.descricao;
+  tabData.cardUrl = titulo.cardUrl || "";
 
-  tabData.area        = info.area;
+  tabData.area = info.area;
   tabData.solicitante = info.solicitante;
-  tabData.marca       = info.marca;
-  tabData.descCamp    = info.descCamp;
-  tabData.canais      = info.canais;
-  tabData.tempo       = info.tempo;
+  tabData.marca = info.marca;
+  tabData.descCamp = info.descCamp;
+  tabData.canais = info.canais;
+  tabData.tempo = info.tempo;
 
-  tabData.base        = dados.base;
-  tabData.observacao  = dados.observacao;
+  tabData.base = dados.base;
+  tabData.observacao = dados.observacao;
 
-  tabData.pushes      = mergedPushes;
-  tabData.banners     = mergedBanners;
-  tabData.mktScreen   = mkt;
+  tabData.pushes = mergedPushes;
+  tabData.banners = mergedBanners;
+  tabData.mktScreen = mergedMkt;
 
   tabsState.tabs[tabId] = tabData;
 
   renderCardLink(tabId, tabData);
-
   renderPushList(tabId, mergedPushes);
   renderBannerList(tabId, mergedBanners);
-  renderMktScreenView(tabId, mkt);
-  renderChannelProcesses(tabId, tabData);
-  renderQAChecks(tabId, tabData);
+  renderMktScreenView(tabId, mergedMkt);
+  renderFarolPanel(tabId, tabData);
 
   autoResizeTextareas(tabId);
   saveState();
@@ -589,7 +542,15 @@ function handleBaseChange(tabId, value) {
   const tabData = tabsState.tabs[tabId] || {};
   tabData.base = value;
   tabsState.tabs[tabId] = tabData;
-  renderChannelProcesses(tabId, tabData);
+  renderFarolPanel(tabId, tabData);
+  saveState();
+}
+
+function handleNomeChange(tabId, value) {
+  const tabData = tabsState.tabs[tabId] || {};
+  tabData.nome = value;
+  tabsState.tabs[tabId] = tabData;
+  renderFarolPanel(tabId, tabData);
   saveState();
 }
 
@@ -670,3 +631,4 @@ window.processCard = processCard;
 window.handlePaste = handlePaste;
 window.handleNotesChange = handleNotesChange;
 window.handleBaseChange = handleBaseChange;
+window.handleNomeChange = handleNomeChange;
