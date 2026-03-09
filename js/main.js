@@ -1,5 +1,6 @@
 // js/main.js
 import { tabsState, saveState, loadState, getNextTabId } from "./state.js";
+import { SOLICITANTES_DB } from "./solicitantes-db.js";
 import {
   parseTitulo,
   parseInformacoesGerais,
@@ -160,6 +161,100 @@ function startEditTabTitle(tabId) {
   input.select();
 }
 
+// ===== lookup de solicitantes =====
+
+function normalizeLookupValue(value) {
+  return String(value || "")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, " ");
+}
+
+function findSolicitanteMatches(rawSolicitante) {
+  const needle = normalizeLookupValue(rawSolicitante);
+  if (!needle) return [];
+
+  const exactMatches = Object.entries(SOLICITANTES_DB)
+    .filter(([hash, dados]) => {
+      const nome = normalizeLookupValue(dados.nome);
+      const email = normalizeLookupValue(dados.email);
+      const aliases = Array.isArray(dados.aliases)
+        ? dados.aliases.map(normalizeLookupValue)
+        : [];
+
+      return (
+        (email && email === needle) ||
+        (nome && nome === needle) ||
+        aliases.includes(needle)
+      );
+    })
+    .map(([hash, dados]) => ({
+      tradingAccountHash: hash,
+      ...dados
+    }));
+
+  if (exactMatches.length > 0) return exactMatches;
+
+  if (needle.includes("@")) return [];
+
+  return Object.entries(SOLICITANTES_DB)
+    .filter(([hash, dados]) => {
+      const nome = normalizeLookupValue(dados.nome);
+      const aliases = Array.isArray(dados.aliases)
+        ? dados.aliases.map(normalizeLookupValue)
+        : [];
+
+      return (
+        (nome && (nome.includes(needle) || needle.includes(nome))) ||
+        aliases.some(a => a.includes(needle) || needle.includes(a))
+      );
+    })
+    .map(([hash, dados]) => ({
+      tradingAccountHash: hash,
+      ...dados
+    }));
+}
+
+function formatSolicitanteDisplay(rawSolicitante) {
+  const base = String(rawSolicitante || "").trim();
+  if (!base) return "";
+
+  const matches = findSolicitanteMatches(base);
+  if (!matches.length) return base;
+
+  const groupedByMarca = new Map();
+
+  matches.forEach(item => {
+    const marca = String(item.marca || "SEM MARCA").trim().toUpperCase();
+    if (!groupedByMarca.has(marca)) groupedByMarca.set(marca, []);
+    groupedByMarca.get(marca).push(item.tradingAccountHash);
+  });
+
+  const marcaOrder = ["XP", "RICO", "CLEAR", "MODAL", "XP EMPRESAS"];
+
+  const orderedMarcas = Array.from(groupedByMarca.keys()).sort((a, b) => {
+    const ia = marcaOrder.indexOf(a);
+    const ib = marcaOrder.indexOf(b);
+
+    if (ia === -1 && ib === -1) return a.localeCompare(b);
+    if (ia === -1) return 1;
+    if (ib === -1) return -1;
+    return ia - ib;
+  });
+
+  const details = orderedMarcas
+    .map(marca => `${marca}-${groupedByMarca.get(marca).join(",")}`)
+    .join("-");
+
+  return `${base} | ${details}`;
+}
+
+function updateSolicitanteText(tabId, rawSolicitante) {
+  setTextValue("solicitanteText_" + tabId, formatSolicitanteDisplay(rawSolicitante));
+}
+
 function mergeEmails(oldEmails = [], newEmails = []) {
   return newEmails.map((e, idx) => {
     const old = oldEmails[idx] || {};
@@ -313,11 +408,6 @@ function createTabFromState(tabId, data) {
 
     <div class="info-group">
       <div class="info-row">
-        <span class="info-label">Status:</span>
-        <span id="statusText_${tabId}" class="info-value status-value">CONSTRUINDO</span>
-      </div>
-
-      <div class="info-row">
         <span class="info-label">Card:</span>
         <span id="cardLink_${tabId}" class="info-value"></span>
       </div>
@@ -325,16 +415,22 @@ function createTabFromState(tabId, data) {
       <div class="info-row">
         <span class="info-label">Canais:</span>
         <span id="canaisText_${tabId}" class="info-value"></span>
-
-        <span class="info-label" style="margin-left:12px;">SOLICITANTE:</span>
-        <span id="solicitanteText_${tabId}" class="info-value">${data.solicitante || ""}</span>
-
-        <span class="info-label" style="margin-left:12px;">Observação:</span>
-        <span id="obsText_${tabId}" class="info-value">${data.observacao || ""}</span>
       </div>
 
       <div class="info-row">
-        <span class="info-label">Descrição do Card:</span>
+        <span class="info-label">SOLICITANTE:</span>
+        <span
+          id="solicitanteText_${tabId}"
+          class="info-value"
+          style="display:inline-block;max-width:100%;overflow-wrap:anywhere;word-break:break-word;"
+        >${formatSolicitanteDisplay(data.solicitante || "")}</span>
+      </div>
+
+      <div class="info-row">
+        <span class="info-label">Observação:</span>
+        <span id="obsText_${tabId}" class="info-value">${data.observacao || ""}</span>
+
+        <span class="info-label" style="margin-left:12px;">Descrição do Card:</span>
         <span id="desc_${tabId}" class="info-value">${data.descricao || ""}</span>
 
         <span class="info-label" style="margin-left:12px;">DESCRICAO CAMPANHA:</span>
@@ -574,7 +670,7 @@ function processCard(tabId, texto) {
   const fullTitle = titulo.tituloCompleto || displayTitle;
 
   setTextValue("desc_" + tabId, titulo.descricao);
-  setTextValue("solicitanteText_" + tabId, info.solicitante);
+  updateSolicitanteText(tabId, info.solicitante);
   setTextValue("descCamp_" + tabId, info.descCamp);
   setTextValue("obsText_" + tabId, dados.observacao);
 
@@ -700,7 +796,7 @@ loadState();
 if (Object.keys(tabsState.tabs).length === 0) {
   createTab();
 } else {
-    for (const tabId in tabsState.tabs) {
+  for (const tabId in tabsState.tabs) {
     createTabFromState(tabId, tabsState.tabs[tabId]);
   }
 
